@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
@@ -11,7 +14,18 @@ const togglePassword = () => {
 
 const handleLogin = () => {
   console.log('Iniciando sesión con:', email.value, password.value)
+  if (!email.value || !password.value) return
+
+  localStorage.setItem('token', 'fake-token')
+  router.push({ name: 'inicio' })
 }
+<<<<<<< Updated upstream
+=======
+
+const irARegistro = () => {
+  router.push({ name: 'registro' })
+}
+>>>>>>> Stashed changes
 </script>
 
 <template>
@@ -34,7 +48,19 @@ const handleLogin = () => {
     <!-- PANEL DERECHO -->
     <div class="right-panel">
       <div class="form-wrapper">
+<<<<<<< Updated upstream
         <h2 class="title">¡Bienvenido!</h2>
+=======
+        
+        <h2 class="title" style="display: flex; justify-content: center; align-items: center; gap: 8px;">
+          ¡Bienvenido a iPaletitas!
+          <svg class="logo-icon paleta-animada" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.5 17H13.5V21C13.5 21.5523 13.0523 22 12.5 22H11.5C10.9477 22 10.5 21.5523 10.5 21V17Z" fill="#FCD34D"/>
+            <path d="M7 8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8V16C17 16.5523 16.5523 17 16 17H8C7.44772 17 7 16.5523 7 16V8Z" fill="#2563EB" fill-opacity="0.1"/>
+            <path d="M8 8C8 5.79086 9.79086 4 12 4C14.2091 4 16 5.79086 16 8V16C16 16.5523 15.5523 17 15 17H9C8.44772 17 8 16.5523 8 16V8Z" fill="#2563EB"/>
+          </svg>
+        </h2>
+>>>>>>> Stashed changes
         <p class="subtitle">Ingresa a tu cuenta para continuar.</p>
 
         <form @submit.prevent="handleLogin" class="login-form">
@@ -72,7 +98,14 @@ const handleLogin = () => {
 
         <div class="links">
           <a href="#" class="link-forgot">Recordar contraseña</a>
+<<<<<<< Updated upstream
           <p class="link-register">¿Todavía no tienes una cuenta? <a href="#">Regístrate</a></p>
+=======
+          <p class="link-register">
+            ¿Todavía no tienes una cuenta?
+            <a href="#" @click.prevent="irARegistro">Regístrate</a>
+          </p>
+>>>>>>> Stashed changes
         </div>
       </div>
     </div>
