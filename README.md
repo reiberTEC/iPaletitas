@@ -1,2 +1,2 @@
-# iPaletitas
-Sistema de gestion inteligente para micro, pequenos negocios
+## iPaletitas
+# hola esto es una prueba de commit
