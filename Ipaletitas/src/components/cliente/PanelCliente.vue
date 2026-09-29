@@ -28,6 +28,7 @@ import {
   DIAS_PRUEBA,
   cambiarSucursal,
   diasRestantes,
+  enPrueba,
   estado,
   planActual,
   sucursalActiva,
@@ -152,8 +153,11 @@ function alCambiarSucursal(evento: Event) {
           </div>
           <PaletaIcon variant="gold" :size="28" />
         </div>
-        <p class="relative mt-3 text-xs text-slate-400">Prueba gratis · {{ diasRestantes }} días restantes</p>
-        <div class="relative mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <p class="relative mt-3 text-xs text-slate-400">
+          {{ enPrueba ? 'Prueba gratis' : 'Suscripción activa' }} · {{ diasRestantes }} días
+          {{ enPrueba ? 'restantes' : 'para renovar' }}
+        </p>
+        <div v-if="enPrueba" class="relative mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
           <div
             class="h-full rounded-full bg-amber-300"
             :style="{ width: `${Math.min(100, (diasRestantes / DIAS_PRUEBA) * 100)}%` }"
@@ -199,7 +203,7 @@ function alCambiarSucursal(evento: Event) {
           </span>
           <div class="hidden leading-tight md:block">
             <p class="text-sm font-bold">{{ estado.sesion?.nombre }}</p>
-            <p class="text-xs text-slate-400">Administrador</p>
+            <p class="text-xs text-slate-400">Titular de la cuenta</p>
           </div>
           <UiButton variant="ghost" size="sm" @click="emit('salir')">
             <LogOut class="size-4" />

@@ -10,6 +10,7 @@ import {
   TrendingUp,
   TriangleAlert,
 } from '@lucide/vue'
+import pina from '@/assets/Img/Piña.jpg'
 import PaletaIcon from '../icons/PaletaIcon.vue'
 import UiBadge from '../ui/Badge.vue'
 import UiButton from '../ui/Button.vue'
@@ -62,11 +63,11 @@ const kpis = computed(() => [
 <template>
   <div>
     <section class="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-blue-800 p-8 text-white sm:p-10">
-      <div class="absolute -top-16 right-10 size-64 rounded-full bg-amber-300/25 blur-3xl" />
-      <div class="absolute right-10 bottom-6 hidden gap-4 md:flex">
-        <PaletaIcon variant="gold" :size="64" />
-        <PaletaIcon variant="white" :size="52" class="mt-8" />
-        <PaletaIcon variant="green" :size="44" />
+      <div class="banner-foto" :style="{ backgroundImage: `url(${pina})` }" aria-hidden="true" />
+      <div class="absolute -bottom-24 -left-16 size-72 rounded-full bg-blue-400/25 blur-3xl" />
+      <div class="absolute right-8 bottom-6 hidden gap-3 lg:flex">
+        <PaletaIcon variant="white" :size="40" class="mt-6 drop-shadow-lg" />
+        <PaletaIcon variant="green" :size="34" class="drop-shadow-lg" />
       </div>
       <div class="relative max-w-xl">
         <UiBadge variant="outline">Sucursal {{ sucursalActiva?.nombre }}</UiBadge>
@@ -101,8 +102,8 @@ const kpis = computed(() => [
     </div>
 
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
-      <UiCard class="p-6 lg:col-span-2">
-        <div class="flex items-start justify-between">
+      <UiCard class="min-w-0 p-6 lg:col-span-2">
+        <div class="flex items-start justify-between gap-3">
           <div>
             <h3 class="text-lg font-bold">Ventas de los últimos 7 días</h3>
             <p class="text-sm text-slate-500">Total de la semana: <strong class="text-slate-900">{{ dinero(totalSemana) }}</strong></p>
@@ -110,8 +111,8 @@ const kpis = computed(() => [
           <UiBadge variant="blue">Esta semana</UiBadge>
         </div>
         <div class="mt-8 flex h-56 items-end gap-3 sm:gap-5">
-          <div v-for="dia in semana" :key="dia.etiqueta" class="group flex h-full flex-1 flex-col items-center justify-end gap-2">
-            <span class="text-[11px] font-semibold text-slate-400 opacity-0 transition group-hover:opacity-100">
+          <div v-for="dia in semana" :key="dia.etiqueta" class="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2">
+            <span class="hidden text-[11px] font-semibold whitespace-nowrap text-slate-400 opacity-0 transition group-hover:opacity-100 sm:block">
               {{ dinero(dia.total) }}
             </span>
             <div
@@ -128,7 +129,7 @@ const kpis = computed(() => [
         </div>
       </UiCard>
 
-      <UiCard class="flex flex-col p-6">
+      <UiCard class="flex min-w-0 flex-col p-6">
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-bold">Por surtir</h3>
           <UiBadge :variant="bajoStock.length ? 'gold' : 'default'">{{ bajoStock.length }}</UiBadge>
@@ -198,3 +199,34 @@ const kpis = computed(() => [
     <Ticket v-if="ventaVista" :venta="ventaVista" @cerrar="ventaVista = null" />
   </div>
 </template>
+
+<style scoped>
+.banner-foto {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: right center;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+  mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
+}
+
+.banner-foto::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(29, 78, 216, 0.95) 0%, rgba(29, 78, 216, 0.75) 100%);
+}
+
+@media (min-width: 768px) {
+  .banner-foto {
+    left: auto;
+    width: 58%;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+    mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
+  }
+
+  .banner-foto::after {
+    background: linear-gradient(90deg, #1d4ed8 0%, rgba(29, 78, 216, 0.85) 35%, rgba(29, 78, 216, 0.2) 100%);
+  }
+}
+</style>

@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { CircleCheck, PackagePlus, Truck, Wallet } from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
-import Encabezado from './Encabezado.vue'
+import Encabezado from '../ui/Encabezado.vue'
 import { estado, registrarEntrada, stock, sucursalActiva } from '@/stores/negocio'
 import { dinero, fechaYHora } from '@/lib/formato'
 

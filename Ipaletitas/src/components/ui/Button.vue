@@ -24,7 +24,7 @@ const classes = computed(() =>
         'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/25 hover:-translate-y-0.5 hover:shadow-blue-600/40',
       outline:
         'border border-slate-200 bg-white/80 text-slate-800 backdrop-blur hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
-      ghost: 'text-slate-600 hover:bg-slate-100 hover:text-blue-700',
+      ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 hover:text-blue-700',
       secondary: 'bg-amber-300 text-slate-900 hover:bg-amber-200',
     }[props.variant],
     {

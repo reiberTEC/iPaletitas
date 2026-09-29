@@ -23,6 +23,12 @@ export function mismoDia(iso: string, dia = new Date()) {
   return new Date(iso).toDateString() === dia.toDateString()
 }
 
+export function nombreDesdeCorreo(correo: string, respaldo = 'Usuario') {
+  const usuario = correo.split('@')[0] ?? ''
+  const limpio = usuario.replace(/[._-]+/g, ' ').trim()
+  return limpio ? limpio.replace(/\b\w/g, (letra) => letra.toUpperCase()) : respaldo
+}
+
 export function iniciales(nombre: string) {
   return nombre
     .split(' ')

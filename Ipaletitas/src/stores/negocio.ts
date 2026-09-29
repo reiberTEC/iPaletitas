@@ -1,20 +1,12 @@
 import { computed, reactive, watch } from 'vue'
+import { DIAS_PRUEBA, PLANES, generarClave, type CicloPago, type Limite, type PlanId } from './catalogo'
+import { nombreDesdeCorreo } from '@/lib/formato'
 
-export type PlanId = 'emprendedor' | 'negocio' | 'empresarial'
-export type CicloPago = 'mensual' | 'anual'
+export { DIAS_PRUEBA, PLANES, precioPlan } from './catalogo'
+export type { CicloPago, Limite, Plan, PlanId } from './catalogo'
+
 export type Rol = 'Administrador' | 'Cajero' | 'Almacén'
 export type MetodoPago = 'Efectivo' | 'Tarjeta' | 'Transferencia'
-export type Limite = 'sucursales' | 'usuarios' | 'productos'
-
-export interface Plan {
-  id: PlanId
-  nombre: string
-  lema: string
-  precioMensual: number
-  destacado?: boolean
-  limites: Record<Limite, number> & { historialMeses: number }
-  incluye: string[]
-}
 
 export interface Sucursal {
   id: string
@@ -83,6 +75,8 @@ export interface Licencia {
   negocio: string
   giro: string
   telefono: string
+  enPrueba?: boolean
+  suspendida?: boolean
 }
 
 interface Estado {
@@ -99,59 +93,7 @@ interface Estado {
   folioEntrada: number
 }
 
-export const DIAS_PRUEBA = 14
 export const IVA = 0.16
-
-export const PLANES: Plan[] = [
-  {
-    id: 'emprendedor',
-    nombre: 'Emprendedor',
-    lema: 'Para tu primer local o puesto.',
-    precioMensual: 299,
-    limites: { sucursales: 1, usuarios: 2, productos: 300, historialMeses: 3 },
-    incluye: [
-      'Punto de venta con tickets',
-      'Inventario y entradas de productos',
-      'Historial de ventas de 3 meses',
-      'Datos en la nube y en local',
-      'Soporte por correo',
-    ],
-  },
-  {
-    id: 'negocio',
-    nombre: 'Negocio',
-    lema: 'Para negocios que ya están creciendo.',
-    precioMensual: 599,
-    destacado: true,
-    limites: { sucursales: 3, usuarios: 8, productos: 3000, historialMeses: 12 },
-    incluye: [
-      'Todo lo de Emprendedor',
-      'Hasta 3 sucursales',
-      'Roles: administrador, cajero y almacén',
-      'Historial de ventas de 12 meses',
-      'Soporte por chat',
-    ],
-  },
-  {
-    id: 'empresarial',
-    nombre: 'Empresarial',
-    lema: 'Para cadenas y franquicias.',
-    precioMensual: 1199,
-    limites: {
-      sucursales: Infinity,
-      usuarios: Infinity,
-      productos: Infinity,
-      historialMeses: Infinity,
-    },
-    incluye: [
-      'Todo lo de Negocio',
-      'Sucursales y usuarios ilimitados',
-      'Historial de ventas sin límite',
-      'Capacitación para tu equipo',
-      'Soporte prioritario',
-    ],
-  },
-]
 
 export const ROLES: { rol: Rol; descripcion: string }[] = [
   { rol: 'Administrador', descripcion: 'Acceso total: licencia, usuarios, sucursales y reportes.' },
@@ -208,9 +150,13 @@ export const ventasSucursal = computed(() =>
   estado.ventas.filter((v) => v.sucursalId === sucursalActiva.value?.id),
 )
 
-export function precioPlan(plan: Plan, ciclo: CicloPago) {
-  return ciclo === 'anual' ? plan.precioMensual * 10 : plan.precioMensual
-}
+export const enPrueba = computed(() => estado.licencia?.enPrueba !== false)
+
+export const bloqueo = computed<'suspendida' | 'vencida' | null>(() => {
+  if (!estado.licencia) return null
+  if (estado.licencia.suspendida) return 'suspendida'
+  return diasRestantes.value === 0 ? 'vencida' : null
+})
 
 export function stock(producto: Producto, sucursalId = sucursalActiva.value?.id ?? '') {
   return producto.existencias[sucursalId] ?? 0
@@ -239,21 +185,8 @@ export function resumenUso(limite: Limite) {
     : `${uso(limite)} de ${maximo.toLocaleString('es-MX')} ${limite}`
 }
 
-function nombreDesdeCorreo(correo: string) {
-  const usuario = correo.split('@')[0] ?? ''
-  const limpio = usuario.replace(/[._-]+/g, ' ').trim()
-  return limpio ? limpio.replace(/\b\w/g, (letra) => letra.toUpperCase()) : 'Administrador'
-}
-
-function generarClave() {
-  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-  const bloque = () =>
-    Array.from({ length: 4 }, () => letras[Math.floor(Math.random() * letras.length)]).join('')
-  return `IPAL-${bloque()}-${bloque()}-${bloque()}`
-}
-
 export function iniciarSesion(correo: string) {
-  estado.sesion = { correo, nombre: nombreDesdeCorreo(correo) }
+  estado.sesion = { correo, nombre: nombreDesdeCorreo(correo, 'Titular') }
 }
 
 export function cerrarSesion() {
@@ -278,6 +211,8 @@ export function activarLicencia(datos: { negocio: string; giro: string; telefono
     negocio: datos.negocio,
     giro: datos.giro,
     telefono: datos.telefono,
+    enPrueba: true,
+    suspendida: false,
   }
   estado.planElegido = null
 
@@ -341,6 +276,7 @@ function sembrarDatos(nombreMatriz: string) {
       const fecha = new Date()
       fecha.setDate(fecha.getDate() - dia)
       fecha.setHours(10 + t, (t * 17) % 60, 0, 0)
+      if (fecha.getTime() > Date.now()) continue
 
       const a = productos[(dia + t) % productos.length]!
       const b = productos[(dia + t * 3 + 1) % productos.length]!
@@ -456,4 +392,12 @@ export function crearSucursal(datos: Omit<Sucursal, 'id'>) {
 
 export function cambiarSucursal(id: string) {
   estado.sucursalActivaId = id
+}
+
+export type AjusteLicencia = Partial<
+  Pick<Licencia, 'planId' | 'ciclo' | 'clave' | 'vence' | 'enPrueba' | 'suspendida'>
+>
+
+export function ajustarLicencia(cambios: AjusteLicencia) {
+  if (estado.licencia) Object.assign(estado.licencia, cambios)
 }

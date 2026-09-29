@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { DOMINIO_ADMIN, esCorreoAdmin } from '@/stores/admin'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const comoAdmin = ref(false)
+const error = ref('')
 
 const togglePassword = () => {
   showPassword.value = !showPassword.value
@@ -13,7 +16,12 @@ const togglePassword = () => {
 const emit = defineEmits(['irRegistro', 'irHome', 'ingresar'])
 
 const handleLogin = () => {
-  emit('ingresar', email.value)
+  if (comoAdmin.value && !esCorreoAdmin(email.value)) {
+    error.value = `Esta cuenta no tiene permisos de administrador. Usa un correo ${DOMINIO_ADMIN}.`
+    return
+  }
+  error.value = ''
+  emit('ingresar', email.value, comoAdmin.value)
 }
 </script>
 
@@ -65,7 +73,17 @@ const handleLogin = () => {
             </div>
           </div>
 
-          <button type="submit" class="btn-primary">Iniciar sesión</button>
+          <label class="admin-opcion" :class="{ 'admin-opcion--activa': comoAdmin }">
+            <input v-model="comoAdmin" type="checkbox" @change="error = ''" />
+            <span class="admin-texto">
+              <strong>Entrar como administrador</strong>
+              <small>Solo personal de iPaletitas ({{ DOMINIO_ADMIN }})</small>
+            </span>
+          </label>
+
+          <p v-if="error" class="login-error" role="alert">{{ error }}</p>
+
+          <button type="submit" class="btn-primary">{{ comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}</button>
         </form>
 
         <div class="links">
@@ -79,3 +97,64 @@ const handleLogin = () => {
 </template>
 
 <style src="../assets/Login.css"></style>
+
+<style scoped>
+.admin-opcion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    background-color 0.2s;
+}
+
+.admin-opcion:hover {
+  border-color: #bfdbfe;
+}
+
+.admin-opcion--activa {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.admin-opcion input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.admin-texto {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.admin-texto strong {
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.admin-texto small {
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.login-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+</style>

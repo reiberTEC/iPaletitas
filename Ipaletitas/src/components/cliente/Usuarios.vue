@@ -6,7 +6,7 @@ import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import UiModal from '../ui/Modal.vue'
 import AvisoLimite from './AvisoLimite.vue'
-import Encabezado from './Encabezado.vue'
+import Encabezado from '../ui/Encabezado.vue'
 import {
   ROLES,
   alternarUsuario,

@@ -5,10 +5,11 @@ import PaletaIcon from '../icons/PaletaIcon.vue'
 import UiBadge from '../ui/Badge.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
-import Encabezado from './Encabezado.vue'
+import Encabezado from '../ui/Encabezado.vue'
 import {
   DIAS_PRUEBA,
   diasRestantes,
+  enPrueba,
   estado,
   limiteDe,
   planActual,
@@ -40,10 +41,10 @@ const detalles = computed(() => {
   if (!licencia || !planActual.value) return []
   return [
     { etiqueta: 'Inicio', valor: fecha(licencia.inicio) },
-    { etiqueta: 'Fin de la prueba', valor: fecha(licencia.vence) },
+    { etiqueta: enPrueba.value ? 'Fin de la prueba' : 'Próxima renovación', valor: fecha(licencia.vence) },
     { etiqueta: 'Facturación', valor: licencia.ciclo === 'anual' ? 'Anual' : 'Mensual' },
     {
-      etiqueta: 'Después de la prueba',
+      etiqueta: enPrueba.value ? 'Después de la prueba' : 'Precio',
       valor: `${precio(precioPlan(planActual.value, licencia.ciclo))} / ${licencia.ciclo === 'anual' ? 'año' : 'mes'}`,
     },
   ]
@@ -71,7 +72,7 @@ async function copiar() {
           <div class="relative flex items-start justify-between gap-4">
             <div>
               <UiBadge variant="outline">
-                <ShieldCheck class="size-3.5" /> Prueba gratis activa
+                <ShieldCheck class="size-3.5" /> {{ enPrueba ? 'Prueba gratis activa' : 'Suscripción activa' }}
               </UiBadge>
               <h2 class="mt-4 text-4xl font-extrabold tracking-tight">Plan {{ planActual?.nombre }}</h2>
               <p class="mt-1 text-slate-400">{{ planActual?.lema }}</p>
@@ -90,7 +91,7 @@ async function copiar() {
             </div>
           </div>
 
-          <div class="relative mt-6">
+          <div v-if="enPrueba" class="relative mt-6">
             <div class="flex justify-between text-sm">
               <span class="text-slate-400">Días de prueba restantes</span>
               <strong>{{ diasRestantes }} de {{ DIAS_PRUEBA }}</strong>
@@ -172,7 +173,7 @@ async function copiar() {
               {{ item }}
             </li>
           </ul>
-          <div class="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
+          <div v-if="enPrueba" class="mt-6 rounded-2xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-amber-200">
             Al terminar la prueba, un asesor te contactará para activar tu forma de pago. No necesitas tarjeta ahora.
           </div>
         </UiCard>
