@@ -1,0 +1,212 @@
+/* Modo oscuro para estilos propios (fuera de Tailwind): sistema, Home, ChatBot, Login y registro. */
+
+html.oscuro body {
+  background: #05070c;
+  color: #e2e8f0;
+}
+
+/* Paletas: el amarillo de los palitos y de la paleta dorada pasa a azul */
+html.oscuro [fill='#FCD34D' i] {
+  fill: #60a5fa;
+}
+
+html.oscuro [fill='#B45309' i] {
+  fill: #1e3a8a;
+}
+
+/* Clases del sistema */
+html.oscuro .ip-fondo {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.22), transparent 60%),
+    radial-gradient(700px 380px at 90% 8%, rgba(29, 78, 216, 0.18), transparent 55%),
+    #05070c;
+}
+
+html.oscuro .ip-label {
+  color: #cbd5e1;
+}
+
+html.oscuro .ip-input {
+  border-color: #1f2a3d;
+  background: #080b12;
+  color: #f1f5f9;
+}
+
+html.oscuro .ip-input:focus {
+  border-color: #3b82f6;
+  background: #080b12;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+html.oscuro .ip-input::placeholder {
+  color: #5b6b82;
+}
+
+html.oscuro .ip-check {
+  accent-color: #3b82f6;
+}
+
+html.oscuro .ip-table th {
+  background: #0b101a;
+  color: #8a97ab;
+}
+
+html.oscuro .ip-table td {
+  border-top-color: #182132;
+  color: #cbd5e1;
+}
+
+html.oscuro .ip-table tbody tr:hover {
+  background: #131a28;
+}
+
+html.oscuro .ip-pestana-activa {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Home */
+html.oscuro .nav-link {
+  color: #cbd5e1;
+}
+
+html.oscuro .nav-link:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+html.oscuro .social-btn {
+  background: rgba(15, 21, 34, 0.85);
+  box-shadow: inset 0 0 0 1px #1f2a3d;
+  color: #cbd5e1;
+}
+
+html.oscuro .social-btn:hover {
+  background: var(--brand);
+  color: #fff;
+}
+
+html.oscuro .home-mesh {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.24), transparent 60%),
+    radial-gradient(700px 380px at 90% 8%, rgba(29, 78, 216, 0.2), transparent 55%),
+    radial-gradient(600px 400px at 70% 90%, rgba(59, 130, 246, 0.08), transparent 50%);
+}
+
+html.oscuro .home-grid {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
+}
+
+/* ChatBot */
+html.oscuro .chat-chip {
+  border-color: #1e3a8a;
+  background: rgba(37, 99, 235, 0.14);
+  color: #93c5fd;
+}
+
+html.oscuro .chat-chip:hover {
+  background: rgba(37, 99, 235, 0.26);
+}
+
+html.oscuro .chat-input {
+  border-color: #1f2a3d;
+  background: #080b12;
+  color: #f1f5f9;
+}
+
+html.oscuro .chat-teaser {
+  border-color: #1f2a3d;
+  background: #0f1522;
+  color: #cbd5e1;
+}
+
+html.oscuro .launcher-dot {
+  border-color: #05070c;
+  background: #60a5fa;
+}
+
+html.oscuro .typing i {
+  background: #64748b;
+}
+
+/* Login y registro (Login.css no se modifica) */
+html.oscuro .login-container,
+html.oscuro .right-panel {
+  background-color: #05070c;
+}
+
+html.oscuro .login-container .title {
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container .subtitle,
+html.oscuro .login-container .link-register {
+  color: #8a97ab;
+}
+
+html.oscuro .login-container .input-group label {
+  color: #cbd5e1;
+}
+
+html.oscuro .login-container input:not([type='checkbox']) {
+  border-color: #1f2a3d;
+  background-color: #0f1522;
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container input:not([type='checkbox']):focus {
+  border-color: #3b82f6;
+  background-color: #0f1522;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+html.oscuro .login-container .btn-eye {
+  color: #8a97ab;
+}
+
+html.oscuro .login-container .btn-eye:hover {
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container .link-forgot,
+html.oscuro .login-container .link-register a {
+  color: #60a5fa;
+}
+
+html.oscuro .login-container .admin-opcion {
+  border-color: #1f2a3d;
+  background: #0f1522;
+}
+
+html.oscuro .login-container .admin-opcion--activa {
+  border-color: #3b82f6;
+  background: rgba(37, 99, 235, 0.15);
+}
+
+html.oscuro .login-container .admin-texto strong {
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container .admin-texto small {
+  color: #8a97ab;
+}
+
+html.oscuro .login-container .login-error {
+  background: rgba(244, 63, 94, 0.12);
+  color: #fda4af;
+}
+
+/* El ticket siempre se imprime en blanco y negro */
+@media print {
+  html.oscuro .ticket-imprimible {
+    background: #fff !important;
+  }
+
+  html.oscuro .ticket-imprimible,
+  html.oscuro .ticket-imprimible * {
+    border-color: #cbd5e1 !important;
+    color: #000 !important;
+  }
+}

@@ -3,6 +3,7 @@ import { computed, ref, type Component } from 'vue'
 import { Clock, KeyRound, LayoutDashboard, LogOut, Menu, ScrollText, Sparkles, Store, Wallet, X } from '@lucide/vue'
 import PaletaIcon from '../icons/PaletaIcon.vue'
 import UiButton from '../ui/Button.vue'
+import TemaToggle from '../ui/TemaToggle.vue'
 import Resumen from './Resumen.vue'
 import Cuentas from './Cuentas.vue'
 import Licencias from './Licencias.vue'
@@ -50,7 +51,7 @@ function ir(seccion: SeccionAdmin) {
 </script>
 
 <template>
-  <div class="min-h-screen w-full bg-slate-100 font-sans text-slate-900">
+  <div class="min-h-screen w-full bg-slate-50 font-sans text-slate-900">
     <div v-if="menuAbierto" class="fixed inset-0 z-40 bg-slate-950/50 lg:hidden" @click="menuAbierto = false" />
 
     <aside
@@ -85,7 +86,9 @@ function ir(seccion: SeccionAdmin) {
           type="button"
           :class="[
             'mb-1 flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 px-3 py-2.5 text-sm font-semibold transition',
-            activa === pestana.id ? 'bg-white text-slate-950' : 'bg-transparent text-slate-400 hover:bg-white/5 hover:text-white',
+            activa === pestana.id
+              ? 'ip-pestana-activa bg-white text-slate-950'
+              : 'bg-transparent text-slate-400 hover:bg-white/5 hover:text-white',
           ]"
           :aria-current="activa === pestana.id ? 'page' : undefined"
           @click="ir(pestana.id)"
@@ -128,6 +131,7 @@ function ir(seccion: SeccionAdmin) {
           <h2 class="truncate text-lg font-extrabold">{{ actual.etiqueta }}</h2>
         </div>
         <div class="flex items-center gap-3">
+          <TemaToggle />
           <span class="grid size-10 place-items-center rounded-full bg-amber-300 text-sm font-extrabold text-slate-950">
             {{ iniciales(estado.sesion?.nombre ?? 'A') }}
           </span>

@@ -2,6 +2,7 @@
 import { ArrowLeft, Check } from '@lucide/vue'
 import PaletaIcon from './icons/PaletaIcon.vue'
 import UiButton from './ui/Button.vue'
+import TemaToggle from './ui/TemaToggle.vue'
 
 defineProps<{ paso: 1 | 2 | 3 }>()
 defineEmits(['volver'])
@@ -39,10 +40,13 @@ const pasos = ['Crear cuenta', 'Elegir licencia', 'Activar']
         </li>
       </ol>
 
-      <UiButton variant="ghost" @click="$emit('volver')">
-        <ArrowLeft class="size-4" />
-        Volver
-      </UiButton>
+      <div class="flex items-center gap-2">
+        <TemaToggle />
+        <UiButton variant="ghost" @click="$emit('volver')">
+          <ArrowLeft class="size-4" />
+          Volver
+        </UiButton>
+      </div>
     </div>
   </header>
 </template>

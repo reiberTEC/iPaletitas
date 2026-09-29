@@ -1,7 +1,9 @@
 @import './base.css' layer(base);
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
+@import './oscuro.css' layer(utilities);
 @import './sistema.css';
+@import './oscuro-global.css';
 
 @theme {
   --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;

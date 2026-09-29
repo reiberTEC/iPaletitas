@@ -8,6 +8,7 @@ import Activacion from './components/Activacion.vue'
 import PanelCliente from './components/cliente/PanelCliente.vue'
 import CuentaBloqueada from './components/cliente/CuentaBloqueada.vue'
 import PanelAdmin from './components/admin/PanelAdmin.vue'
+import TemaToggle from './components/ui/TemaToggle.vue'
 import { bloqueo, cerrarSesion, estado, iniciarSesion } from './stores/negocio'
 import { cerrarSesionAdmin, esCorreoAdmin, estado as admin, iniciarSesionAdmin } from './stores/admin'
 
@@ -94,4 +95,9 @@ function salirAdmin() {
   </template>
 
   <Home v-else @irLogin="ir('login')" @irRegistro="ir('registro')" @irPlanes="ir('planes')" />
+
+  <TemaToggle
+    v-if="vistaActual === 'login' || vistaActual === 'registro'"
+    class="fixed top-5 right-5 z-[10000] bg-white/90 shadow-lg ring-1 ring-slate-200 backdrop-blur"
+  />
 </template>

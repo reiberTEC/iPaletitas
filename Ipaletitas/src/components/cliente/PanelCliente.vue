@@ -15,6 +15,7 @@ import {
 } from '@lucide/vue'
 import PaletaIcon from '../icons/PaletaIcon.vue'
 import UiButton from '../ui/Button.vue'
+import TemaToggle from '../ui/TemaToggle.vue'
 import Inicio from './Inicio.vue'
 import PuntoVenta from './PuntoVenta.vue'
 import Productos from './Productos.vue'
@@ -198,6 +199,7 @@ function alCambiarSucursal(evento: Event) {
         </label>
 
         <div class="flex items-center gap-3">
+          <TemaToggle />
           <span class="grid size-10 place-items-center rounded-full bg-blue-600 text-sm font-bold text-white">
             {{ iniciales(estado.sesion?.nombre ?? 'A') }}
           </span>

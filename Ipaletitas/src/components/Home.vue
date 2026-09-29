@@ -2,6 +2,7 @@
 import PaletaIcon from './icons/PaletaIcon.vue'
 import ChatBot from './ChatBot.vue'
 import UiButton from './ui/Button.vue'
+import TemaToggle from './ui/TemaToggle.vue'
 import UiBadge from './ui/Badge.vue'
 import UiCard from './ui/Card.vue'
 import {
@@ -183,6 +184,7 @@ const pasos = [
         </nav>
 
         <nav class="flex items-center gap-2" aria-label="Acceso">
+          <TemaToggle />
           <UiButton variant="ghost" @click="$emit('irLogin')">Iniciar sesión</UiButton>
           <UiButton @click="$emit('irRegistro')">Crear cuenta</UiButton>
         </nav>
