@@ -9,12 +9,12 @@ const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleRegister = () => {
-  console.log('Registrando cuenta:', email.value, password.value)
-}
+// Eventos para regresar al Login o avisar que la cuenta se creó
+const emit = defineEmits(['irLogin', 'irHome', 'registrado'])
 
-// Evento para regresar al Login
-defineEmits(['irLogin'])
+const handleRegister = () => {
+  emit('registrado', email.value)
+}
 </script>
 
 <template>

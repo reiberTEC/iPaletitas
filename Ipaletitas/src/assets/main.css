@@ -1,35 +1,34 @@
-@import './base.css';
+@import './base.css' layer(base);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './sistema.css';
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+  --color-gold: #fcd34d;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  display: block;
+  margin: 0;
+}
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  min-height: 100vh;
+  padding: 0;
 }
 
-a,
-.green {
+html {
+  scroll-behavior: smooth;
+}
+
+a {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
-}
-
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
 }

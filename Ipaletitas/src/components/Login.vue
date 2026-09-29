@@ -9,12 +9,12 @@ const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleLogin = () => {
-  console.log('Iniciando sesión con:', email.value, password.value)
-}
+// Declaramos los eventos para avisarle a App.vue que cambie de pantalla
+const emit = defineEmits(['irRegistro', 'irHome', 'ingresar'])
 
-// Declaramos un evento para avisarle a App.vue que cambie de pantalla
-defineEmits(['irRegistro'])
+const handleLogin = () => {
+  emit('ingresar', email.value)
+}
 </script>
 
 <template>

@@ -1,0 +1,104 @@
+.ip-fondo {
+  background:
+    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.16), transparent 60%),
+    radial-gradient(700px 380px at 90% 8%, rgba(252, 211, 77, 0.24), transparent 55%),
+    #f6f8ff;
+}
+
+.ip-check {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  accent-color: #2563eb;
+}
+
+.ip-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: #334155;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ip-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.925rem;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.ip-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.ip-input.ip-input-icono {
+  padding-left: 2.4rem;
+}
+
+.ip-input::placeholder {
+  color: #94a3b8;
+}
+
+.ip-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.ip-table th {
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ip-table td {
+  padding: 0.85rem 1rem;
+  border-top: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.ip-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.ip-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .ticket-imprimible,
+  .ticket-imprimible * {
+    visibility: visible;
+  }
+
+  .ticket-imprimible {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80mm;
+    box-shadow: none !important;
+  }
+}
