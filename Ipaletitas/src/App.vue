@@ -4,7 +4,7 @@ import Login from './components/Login.vue'
 import VistaNewCount from './components/VistaNewCount.vue'
 
 // Importaciones de tus nuevas vistas
-import VistaInicio from './components/VistaInicio.vue'
+import VistaInicio from './components/VIstaInicio.vue'
 import VistaProducts from './components/VistaProducts.vue'
 import VistaSales from './components/VistaSales.vue'
 import VistaEmployees from './components/VistaEmployees.vue'
