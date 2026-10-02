@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -19,8 +18,6 @@ const handleRegister = () => {
 const irALogin = () => {
   router.push({ name: 'login' })
 }
-// Evento para regresar al Login
-defineEmits(['irLogin'])
 </script>
 
 <template>
@@ -78,7 +75,6 @@ defineEmits(['irLogin'])
             ¿Ya tienes una cuenta? 
             <a href="#" @click.prevent="irALogin">Inicia sesión</a>
           </p>
-          <p class="link-register">¿Ya tienes una cuenta? <a href="#" @click.prevent="$emit('irLogin')">Inicia sesión</a></p>
         </div>
       </div>
     </div>
