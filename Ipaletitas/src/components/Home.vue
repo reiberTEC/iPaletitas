@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import PaletaIcon from './icons/PaletaIcon.vue'
 import ChatBot from './ChatBot.vue'
 import UiButton from './ui/Button.vue'
@@ -10,15 +11,24 @@ import {
   ChevronDown,
   Cloud,
   Clock,
+  Menu,
   MonitorSmartphone,
   Package,
   Receipt,
   Store,
   Ticket,
   Users,
+  X,
 } from '@lucide/vue'
 
-defineEmits(['irLogin', 'irRegistro', 'irPlanes'])
+const emit = defineEmits(['irLogin', 'irRegistro', 'irPlanes'])
+
+const menuMovil = ref(false)
+
+function irDesdeMenu(destino: 'irLogin' | 'irRegistro' | 'irPlanes') {
+  menuMovil.value = false
+  emit(destino)
+}
 
 const menu = [
   {
@@ -185,16 +195,60 @@ const pasos = [
 
         <nav class="flex items-center gap-2" aria-label="Acceso">
           <TemaToggle />
-          <UiButton variant="ghost" @click="$emit('irLogin')">Iniciar sesión</UiButton>
-          <UiButton @click="$emit('irRegistro')">Crear cuenta</UiButton>
+          <UiButton variant="ghost" class="hidden sm:inline-flex" @click="$emit('irLogin')">Iniciar sesión</UiButton>
+          <UiButton class="hidden sm:inline-flex" @click="$emit('irRegistro')">Crear cuenta</UiButton>
+          <button
+            type="button"
+            class="grid size-10 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-700 hover:bg-slate-100 xl:hidden"
+            :aria-label="menuMovil ? 'Cerrar menú' : 'Abrir menú'"
+            :aria-expanded="menuMovil"
+            @click="menuMovil = !menuMovil"
+          >
+            <X v-if="menuMovil" class="size-5" />
+            <Menu v-else class="size-5" />
+          </button>
         </nav>
       </div>
+
+      <Transition name="menu-movil">
+        <div v-if="menuMovil" class="border-t border-slate-200/70 bg-white xl:hidden">
+          <div class="page-shell flex flex-col gap-1 py-4">
+            <a
+              v-for="opcion in menu[0]!.opciones"
+              :key="opcion.titulo"
+              :href="opcion.href"
+              class="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+              @click="menuMovil = false"
+            >
+              {{ opcion.titulo }}
+            </a>
+            <a
+              href="#pasos"
+              class="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+              @click="menuMovil = false"
+            >
+              Cómo empezar
+            </a>
+            <button
+              type="button"
+              class="cursor-pointer rounded-xl border-0 bg-transparent px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
+              @click="irDesdeMenu('irPlanes')"
+            >
+              Precios
+            </button>
+            <div class="mt-3 grid grid-cols-2 gap-2 sm:hidden">
+              <UiButton variant="outline" @click="irDesdeMenu('irLogin')">Iniciar sesión</UiButton>
+              <UiButton @click="irDesdeMenu('irRegistro')">Crear cuenta</UiButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
     </header>
 
     <main>
       <section class="flex min-h-[calc(100svh-4.5rem)] w-full items-center justify-center py-16">
-        <div class="page-shell grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        <div>
+        <div class="page-shell grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div class="min-w-0">
           <UiBadge variant="blue" class="mb-6">
             <PaletaIcon variant="gold" :size="14" />
             SaaS web · computadora, tablet y teléfono
@@ -255,7 +309,7 @@ const pasos = [
           </div>
         </div>
 
-        <div class="flex w-full flex-col gap-6">
+        <div class="flex w-full min-w-0 flex-col gap-6">
         <div class="marquee-box relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/70 py-3.5 backdrop-blur">
           <div class="marquee flex w-max gap-10 pr-10 text-sm font-semibold tracking-wide text-slate-500">
             <span v-for="(item, i) in [...marquee, ...marquee]" :key="i" class="flex items-center gap-2">
@@ -566,6 +620,19 @@ const pasos = [
     opacity: 0.65;
     transform: scale(1.08);
   }
+}
+
+.menu-movil-enter-active,
+.menu-movil-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.menu-movil-enter-from,
+.menu-movil-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 @media (prefers-reduced-motion: reduce) {

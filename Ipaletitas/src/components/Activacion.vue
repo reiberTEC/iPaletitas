@@ -8,6 +8,7 @@ import UiButton from './ui/Button.vue'
 import UiCard from './ui/Card.vue'
 import { DIAS_PRUEBA, PLANES, activarLicencia, estado, precioPlan } from '@/stores/negocio'
 import { fecha, precio } from '@/lib/formato'
+import { copiarTexto } from '@/lib/utils'
 
 defineEmits(['listo', 'volver'])
 
@@ -66,7 +67,7 @@ function activar() {
 }
 
 async function copiar() {
-  await navigator.clipboard.writeText(estado.licencia?.clave ?? '')
+  await copiarTexto(estado.licencia?.clave ?? '')
   copiado.value = true
   setTimeout(() => (copiado.value = false), 1800)
 }

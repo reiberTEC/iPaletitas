@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import {
   KeyRound,
   LayoutDashboard,
@@ -82,19 +82,28 @@ function ir(seccion: Seccion) {
 function alCambiarSucursal(evento: Event) {
   cambiarSucursal((evento.target as HTMLSelectElement).value)
 }
+
+function alPresionarTecla(evento: KeyboardEvent) {
+  if (evento.key === 'Escape') menuAbierto.value = false
+}
+
+onMounted(() => window.addEventListener('keydown', alPresionarTecla))
+onBeforeUnmount(() => window.removeEventListener('keydown', alPresionarTecla))
 </script>
 
 <template>
   <div class="min-h-screen w-full bg-slate-50 font-sans text-slate-900">
     <Transition name="velo">
-      <div v-if="menuAbierto" class="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" @click="menuAbierto = false" />
+      <div v-if="menuAbierto" class="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-sm" @click="menuAbierto = false" />
     </Transition>
 
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-300 lg:translate-x-0',
-        menuAbierto ? 'translate-x-0' : '-translate-x-full',
+        'fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white transition-transform duration-300',
+        menuAbierto ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
       ]"
+      :aria-hidden="!menuAbierto"
+      :inert="!menuAbierto"
     >
       <div class="flex h-[4.5rem] shrink-0 items-center justify-between px-6">
         <div class="flex items-center gap-2.5">
@@ -105,7 +114,7 @@ function alCambiarSucursal(evento: Event) {
         </div>
         <button
           type="button"
-          class="grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-500 hover:bg-slate-100 lg:hidden"
+          class="grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-500 hover:bg-slate-100"
           aria-label="Cerrar menú"
           @click="menuAbierto = false"
         >
@@ -170,14 +179,15 @@ function alCambiarSucursal(evento: Event) {
       </div>
     </aside>
 
-    <div class="lg:pl-72">
+    <div>
       <header
         class="sticky top-0 z-30 flex h-[4.5rem] items-center gap-4 border-b border-slate-200 bg-white/80 px-5 backdrop-blur-xl sm:px-8"
       >
         <button
           type="button"
-          class="grid size-10 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-600 hover:bg-slate-100 lg:hidden"
+          class="grid size-10 shrink-0 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-600 hover:bg-slate-100"
           aria-label="Abrir menú"
+          :aria-expanded="menuAbierto"
           @click="menuAbierto = true"
         >
           <Menu class="size-5" />

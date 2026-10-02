@@ -18,6 +18,7 @@ import {
   type Limite,
 } from '@/stores/negocio'
 import { fecha, precio } from '@/lib/formato'
+import { copiarTexto } from '@/lib/utils'
 
 defineEmits(['cambiarPlan'])
 
@@ -52,7 +53,7 @@ const detalles = computed(() => {
 
 async function copiar() {
   if (!estado.licencia) return
-  await navigator.clipboard?.writeText(estado.licencia.clave)
+  await copiarTexto(estado.licencia.clave)
   copiado.value = true
   setTimeout(() => (copiado.value = false), 2000)
 }

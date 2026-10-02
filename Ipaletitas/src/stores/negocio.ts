@@ -1,6 +1,7 @@
 import { computed, reactive, watch } from 'vue'
 import { DIAS_PRUEBA, PLANES, generarClave, type CicloPago, type Limite, type PlanId } from './catalogo'
 import { nombreDesdeCorreo } from '@/lib/formato'
+import { nuevoId } from '@/lib/utils'
 
 export { DIAS_PRUEBA, PLANES, precioPlan } from './catalogo'
 export type { CicloPago, Limite, Plan, PlanId } from './catalogo'
@@ -131,8 +132,6 @@ function cargar(): Estado {
 export const estado = reactive<Estado>(cargar())
 
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
-
-const nuevoId = () => crypto.randomUUID()
 
 export const planActual = computed(() => PLANES.find((p) => p.id === estado.licencia?.planId) ?? null)
 

@@ -11,6 +11,7 @@ import {
 } from './catalogo'
 import { ajustarLicencia, estado as cliente, type AjusteLicencia } from './negocio'
 import { nombreDesdeCorreo } from '@/lib/formato'
+import { nuevoId } from '@/lib/utils'
 
 export type EstadoCuenta = 'Prueba' | 'Activa' | 'Suspendida' | 'Vencida'
 export type EstadoPago = 'Pagado' | 'Pendiente' | 'Vencido'
@@ -72,7 +73,6 @@ export const ID_CUENTA_LOCAL = 'cuenta-local'
 const CLAVE_ALMACEN = 'ipaletitas:admin'
 const DIA = 86_400_000
 
-const nuevoId = () => crypto.randomUUID()
 const haceDias = (dias: number) => new Date(Date.now() - dias * DIA).toISOString()
 const enDias = (dias: number) => new Date(Date.now() + dias * DIA).toISOString()
 const sinAcentos = (texto: string) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
