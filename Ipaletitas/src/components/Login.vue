@@ -21,6 +21,9 @@ const handleLogin = () => {
 const irARegistro = () => {
   router.push({ name: 'registro' })
 }
+
+// Declaramos un evento para avisarle a App.vue que cambie de pantalla
+defineEmits(['irRegistro'])
 </script>
 
 <template>
@@ -77,6 +80,8 @@ const irARegistro = () => {
         <div class="links">
           <a href="#" class="link-forgot">Recordar contraseña</a>
           <p class="link-register">¿Todavía no tienes una cuenta? <a href="#" @click.prevent="irARegistro">Regístrate</a></p>
+          <!-- Aquí conectamos el evento para ir a crear cuenta -->
+          <p class="link-register">¿Todavía no tienes una cuenta? <a href="#" @click.prevent="$emit('irRegistro')">Regístrate</a></p>
         </div>
       </div>
     </div>
