@@ -7,6 +7,8 @@ export type Seccion =
   | 'usuarios'
   | 'sucursales'
   | 'licencia'
+  | 'suscripciones'
+  | 'nosotros'
 
 export function colorCategoria(categoria: string): 'blue' | 'gold' | 'green' {
   const texto = categoria.toLowerCase()

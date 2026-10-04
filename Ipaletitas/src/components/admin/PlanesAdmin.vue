@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Check, Clock, Package, Store, Users } from '@lucide/vue'
-import PaletaIcon from '../icons/PaletaIcon.vue'
+import { mascotaPlan } from '../planes/mascotas'
 import UiBadge from '../ui/Badge.vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
-import { precioPlan, type Plan } from '@/stores/catalogo'
+import { acentoPlan, precioPlan, type Plan } from '@/stores/catalogo'
 import { cuentas, estadoDe, metricas } from '@/stores/admin'
 import { dinero, precio } from '@/lib/formato'
-
-const variantes = { emprendedor: 'gold', negocio: 'blue', empresarial: 'green' } as const
+import { tema } from '@/lib/tema'
 
 const limite = (valor: number, unidad: string) => (valor === Infinity ? `${unidad} ilimitados` : `${valor.toLocaleString('es-MX')} ${unidad}`)
 
@@ -29,15 +28,15 @@ const mrrTotal = computed(() => Math.max(1, metricas.value.mrr))
   <div>
     <Encabezado titulo="Planes y precios" descripcion="Catálogo de licencias que ven los clientes al crear su cuenta, con su desempeño." />
 
-    <div class="grid gap-6 lg:grid-cols-3">
+    <div class="grid gap-6 md:grid-cols-2 2xl:grid-cols-4">
       <UiCard v-for="p in metricas.porPlan" :key="p.plan.id" class="flex flex-col bg-white p-6">
-        <div class="flex items-start justify-between">
+        <div class="flex items-start justify-between gap-3">
           <div>
             <UiBadge v-if="p.plan.destacado" variant="gold" class="mb-2">Destacado</UiBadge>
-            <h3 class="text-xl font-extrabold">{{ p.plan.nombre }}</h3>
+            <h3 class="text-xl font-extrabold" :style="{ color: acentoPlan(p.plan, tema === 'oscuro') }">{{ p.plan.nombre }}</h3>
             <p class="text-sm text-slate-500">{{ p.plan.lema }}</p>
           </div>
-          <PaletaIcon :variant="variantes[p.plan.id]" :size="36" />
+          <img :src="mascotaPlan[p.plan.id].src" :alt="mascotaPlan[p.plan.id].alt" class="h-16 w-auto shrink-0" />
         </div>
 
         <p class="mt-5 text-3xl font-extrabold">{{ precio(p.plan.precioMensual) }}<span class="text-sm font-medium text-slate-400"> /mes</span></p>

@@ -27,6 +27,7 @@ const clienteConLicencia = computed(() => Boolean(estado.sesion && estado.licenc
 
 function ir(vista: Vista) {
   if (vista === 'admin' && !puedeVerAdmin.value) vista = 'login'
+  if ((vista === 'planes' || vista === 'activacion') && !estado.sesion) vista = 'login'
   vistaActual.value = vista
   window.scrollTo({ top: 0, behavior: 'instant' })
 }
@@ -58,12 +59,7 @@ function salirAdmin() {
 </script>
 
 <template>
-  <Home
-    v-if="vistaActual === 'home'"
-    @irLogin="ir('login')"
-    @irRegistro="ir('registro')"
-    @irPlanes="ir('planes')"
-  />
+  <Home v-if="vistaActual === 'home'" @irLogin="ir('login')" @irRegistro="ir('registro')" />
 
   <Login
     v-else-if="vistaActual === 'login'"
@@ -80,21 +76,25 @@ function salirAdmin() {
   />
 
   <Planes
-    v-else-if="vistaActual === 'planes'"
-    @elegido="ir(estado.sesion ? 'activacion' : 'registro')"
+    v-else-if="vistaActual === 'planes' && estado.sesion"
+    @elegido="ir('activacion')"
     @volver="ir(clienteConLicencia ? 'cliente' : 'home')"
   />
 
-  <Activacion v-else-if="vistaActual === 'activacion'" @listo="ir('cliente')" @volver="ir('planes')" />
+  <Activacion
+    v-else-if="vistaActual === 'activacion' && estado.sesion"
+    @listo="ir('cliente')"
+    @volver="ir('planes')"
+  />
 
   <PanelAdmin v-else-if="vistaActual === 'admin' && puedeVerAdmin" @salir="salirAdmin" />
 
   <template v-else-if="vistaActual === 'cliente' && clienteConLicencia">
     <CuentaBloqueada v-if="bloqueo" :motivo="bloqueo" @salir="salirCliente" @cambiarPlan="ir('planes')" />
-    <PanelCliente v-else @salir="salirCliente" @cambiarPlan="ir('planes')" />
+    <PanelCliente v-else @salir="salirCliente" />
   </template>
 
-  <Home v-else @irLogin="ir('login')" @irRegistro="ir('registro')" @irPlanes="ir('planes')" />
+  <Home v-else @irLogin="ir('login')" @irRegistro="ir('registro')" />
 
   <TemaToggle
     v-if="vistaActual === 'login' || vistaActual === 'registro'"

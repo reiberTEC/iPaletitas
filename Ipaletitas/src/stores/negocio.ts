@@ -1,9 +1,18 @@
 import { computed, reactive, watch } from 'vue'
-import { DIAS_PRUEBA, PLANES, generarClave, type CicloPago, type Limite, type PlanId } from './catalogo'
+import {
+  DIAS_PRUEBA,
+  PLANES,
+  PLAN_RECOMENDADO,
+  generarClave,
+  migrarPlanId,
+  type CicloPago,
+  type Limite,
+  type PlanId,
+} from './catalogo'
 import { nombreDesdeCorreo } from '@/lib/formato'
 import { nuevoId } from '@/lib/utils'
 
-export { DIAS_PRUEBA, PLANES, precioPlan } from './catalogo'
+export { DIAS_PRUEBA, PLANES, PLAN_RECOMENDADO, acentoPlan, planPorId, precioPlan } from './catalogo'
 export type { CicloPago, Limite, Plan, PlanId } from './catalogo'
 
 export type Rol = 'Administrador' | 'Gerente' | 'Cajero' | 'Almacén'
@@ -201,6 +210,9 @@ for (const usuario of estado.usuarios as Partial<Usuario>[]) {
   usuario.permisos ??= permisosDeRol(usuario.rol ?? 'Cajero')
 }
 
+if (estado.licencia) estado.licencia.planId = migrarPlanId(estado.licencia.planId)
+if (estado.planElegido) estado.planElegido.planId = migrarPlanId(estado.planElegido.planId)
+
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
 
 export const planActual = computed(() => PLANES.find((p) => p.id === estado.licencia?.planId) ?? null)
@@ -267,7 +279,7 @@ export function elegirPlan(planId: PlanId, ciclo: CicloPago) {
 }
 
 export function activarLicencia(datos: { negocio: string; giro: string; telefono: string; sucursal: string }) {
-  const eleccion = estado.planElegido ?? { planId: 'negocio' as const, ciclo: 'mensual' as const }
+  const eleccion = estado.planElegido ?? { planId: PLAN_RECOMENDADO, ciclo: 'mensual' as const }
   const inicio = new Date()
   const vence = new Date(inicio)
   vence.setDate(vence.getDate() + DIAS_PRUEBA)
@@ -493,4 +505,16 @@ export type AjusteLicencia = Partial<
 
 export function ajustarLicencia(cambios: AjusteLicencia) {
   if (estado.licencia) Object.assign(estado.licencia, cambios)
+}
+
+export function cambiarPlan(planId: PlanId, ciclo: CicloPago) {
+  ajustarLicencia({ planId, ciclo })
+}
+
+export function excesosDelPlan(planId: PlanId) {
+  const plan = PLANES.find((p) => p.id === planId)
+  if (!plan) return []
+  return (['sucursales', 'usuarios', 'productos'] as const)
+    .filter((limite) => uso(limite) > plan.limites[limite])
+    .map((limite) => ({ limite, uso: uso(limite), maximo: plan.limites[limite] }))
 }

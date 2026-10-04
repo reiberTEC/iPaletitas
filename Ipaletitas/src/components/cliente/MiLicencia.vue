@@ -62,7 +62,7 @@ async function copiar() {
 <template>
   <div>
     <Encabezado titulo="Mi licencia" descripcion="Consulta tu plan, tu clave de activación y cuánto estás usando.">
-      <UiButton @click="$emit('cambiarPlan')">Cambiar de licencia</UiButton>
+      <UiButton @click="$emit('cambiarPlan')">Cambiar de plan</UiButton>
     </Encabezado>
 
     <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">

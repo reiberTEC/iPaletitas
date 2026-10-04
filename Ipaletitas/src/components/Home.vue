@@ -2,6 +2,9 @@
 import { ref } from 'vue'
 import PaletaIcon from './icons/PaletaIcon.vue'
 import ChatBot from './ChatBot.vue'
+import TarjetaPlan from './planes/TarjetaPlan.vue'
+import SelectorCiclo from './planes/SelectorCiclo.vue'
+import { DIAS_PRUEBA, PLANES, type CicloPago } from '@/stores/catalogo'
 import UiButton from './ui/Button.vue'
 import TemaToggle from './ui/TemaToggle.vue'
 import UiBadge from './ui/Badge.vue'
@@ -9,6 +12,7 @@ import UiCard from './ui/Card.vue'
 import {
   ArrowRight,
   ChevronDown,
+  CircleCheck,
   Cloud,
   Clock,
   Menu,
@@ -21,11 +25,19 @@ import {
   X,
 } from '@lucide/vue'
 
-const emit = defineEmits(['irLogin', 'irRegistro', 'irPlanes'])
+const emit = defineEmits(['irLogin', 'irRegistro'])
 
 const menuMovil = ref(false)
+const ciclo = ref<CicloPago>('mensual')
 
-function irDesdeMenu(destino: 'irLogin' | 'irRegistro' | 'irPlanes') {
+const ventajas = [
+  `${DIAS_PRUEBA} días de prueba gratis, sin tarjeta`,
+  'Sin plazos forzosos: cambia o cancela cuando quieras',
+  'Actualizaciones y respaldo en la nube incluidos',
+  'Soporte en español por chat y correo',
+]
+
+function irDesdeMenu(destino: 'irLogin' | 'irRegistro') {
   menuMovil.value = false
   emit(destino)
 }
@@ -185,9 +197,9 @@ const pasos = [
           <a
             v-for="enlace in enlaces"
             :key="enlace"
-            href="#"
+            :href="enlace === 'Precios' ? '#precios' : '#'"
             class="nav-link"
-            @click.prevent="enlace === 'Precios' && $emit('irPlanes')"
+            @click="enlace !== 'Precios' && $event.preventDefault()"
           >
             {{ enlace }}
           </a>
@@ -229,13 +241,13 @@ const pasos = [
             >
               Cómo empezar
             </a>
-            <button
-              type="button"
-              class="cursor-pointer rounded-xl border-0 bg-transparent px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-blue-50"
-              @click="irDesdeMenu('irPlanes')"
+            <a
+              href="#precios"
+              class="rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+              @click="menuMovil = false"
             >
               Precios
-            </button>
+            </a>
             <div class="mt-3 grid grid-cols-2 gap-2 sm:hidden">
               <UiButton variant="outline" @click="irDesdeMenu('irLogin')">Iniciar sesión</UiButton>
               <UiButton @click="irDesdeMenu('irRegistro')">Crear cuenta</UiButton>
@@ -464,6 +476,36 @@ const pasos = [
             <h3 class="mt-3 text-xl font-extrabold">{{ paso.t }}</h3>
             <p class="mt-3 text-sm leading-6 text-slate-500">{{ paso.d }}</p>
           </article>
+        </div>
+      </section>
+
+      <section id="precios" class="w-full scroll-mt-24 pt-24 lg:pt-28">
+        <div class="page-shell">
+          <div class="mx-auto max-w-3xl text-center">
+            <UiBadge variant="gold" class="mb-4">Precios</UiBadge>
+            <h2 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Un plan para cada etapa de tu negocio</h2>
+            <p class="mt-4 text-lg leading-7 text-slate-500">
+              Precios en pesos mexicanos con IVA incluido. Paga mes a mes o ahorra con el plan anual.
+            </p>
+            <div class="mt-6 flex justify-center">
+              <SelectorCiclo v-model="ciclo" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-x-6 gap-y-[150px] pt-[130px] sm:grid-cols-2 xl:grid-cols-4">
+            <TarjetaPlan v-for="plan in PLANES" :key="plan.id" :plan="plan" :ciclo="ciclo" solo-ver />
+          </div>
+
+          <ul class="mx-auto mt-12 grid max-w-4xl list-none gap-3 p-0 sm:grid-cols-2">
+            <li
+              v-for="ventaja in ventajas"
+              :key="ventaja"
+              class="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/70 px-5 py-4 text-sm font-semibold text-slate-700 backdrop-blur"
+            >
+              <CircleCheck class="size-5 shrink-0 text-emerald-500" />
+              {{ ventaja }}
+            </li>
+          </ul>
         </div>
       </section>
 

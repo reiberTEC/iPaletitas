@@ -4,7 +4,7 @@ import { Ban, CalendarPlus, CircleCheck, CirclePlay, Mail, MapPin, Phone, Refres
 import UiButton from '../ui/Button.vue'
 import UiModal from '../ui/Modal.vue'
 import EstadoBadge from './EstadoBadge.vue'
-import { PLANES, planPorId, type CicloPago, type Limite, type PlanId } from '@/stores/catalogo'
+import { PLANES, PLAN_RECOMENDADO, planPorId, type CicloPago, type Limite, type PlanId } from '@/stores/catalogo'
 import {
   activarSuscripcion,
   buscarCuenta,
@@ -25,10 +25,10 @@ defineEmits(['cerrar'])
 
 const cuenta = computed(() => buscarCuenta(props.id))
 const estadoCuenta = computed(() => (cuenta.value ? estadoDe(cuenta.value) : 'Activa'))
-const plan = computed(() => planPorId(cuenta.value?.planId ?? 'emprendedor'))
+const plan = computed(() => planPorId(cuenta.value?.planId ?? 'basica'))
 const pagos = computed(() => pagosDe(props.id))
 
-const planNuevo = ref<PlanId>(cuenta.value?.planId ?? 'negocio')
+const planNuevo = ref<PlanId>(cuenta.value?.planId ?? PLAN_RECOMENDADO)
 const cicloNuevo = ref<CicloPago>(cuenta.value?.ciclo ?? 'mensual')
 const aviso = ref('')
 

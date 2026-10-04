@@ -3,6 +3,7 @@ import {
   DIAS_PRUEBA,
   PLANES,
   generarClave,
+  migrarPlanId,
   planPorId,
   precioPlan,
   type CicloPago,
@@ -84,17 +85,17 @@ export function esCorreoAdmin(correo: string) {
 type Situacion = 'prueba' | 'activa' | 'suspendida' | 'vencida'
 
 const semilla: [string, string, string, string, PlanId, CicloPago, number, Situacion, [number, number, number], number][] = [
-  ['Paletería La Flor de Michoacán', 'Rosa Hernández', 'Paletería', 'Morelia', 'negocio', 'mensual', 210, 'activa', [3, 6, 184], 1320],
-  ['Nevería El Oso Polar', 'Jorge Ramírez', 'Nevería', 'Guadalajara', 'empresarial', 'anual', 400, 'activa', [7, 22, 540], 4870],
-  ['Abarrotes Don Chuy', 'Jesús Castillo', 'Abarrotes', 'Querétaro', 'emprendedor', 'mensual', 95, 'activa', [1, 2, 262], 910],
-  ['Helados Tropicana', 'Mariana López', 'Nevería', 'Veracruz', 'negocio', 'anual', 330, 'activa', [2, 5, 97], 1650],
-  ['Frutería Los Pinos', 'Alberto Sánchez', 'Frutería', 'Puebla', 'emprendedor', 'mensual', 9, 'prueba', [1, 1, 48], 64],
-  ['Café Aroma de Olla', 'Daniela Torres', 'Cafetería', 'Oaxaca', 'negocio', 'mensual', 12, 'prueba', [1, 3, 35], 210],
-  ['Papelería Arcoíris', 'Luis Mendoza', 'Papelería', 'León', 'emprendedor', 'mensual', 4, 'prueba', [1, 1, 120], 18],
-  ['Paletas Doña Lupe', 'Guadalupe Ortiz', 'Paletería', 'Ciudad de México', 'emprendedor', 'mensual', 150, 'suspendida', [1, 2, 60], 0],
-  ['Farmacia San Rafael', 'Ricardo Flores', 'Farmacia', 'Monterrey', 'negocio', 'mensual', 70, 'vencida', [2, 4, 890], 12],
-  ['Tortillería La Güera', 'Patricia Ruiz', 'Tortillería', 'Toluca', 'emprendedor', 'anual', 280, 'activa', [1, 2, 12], 2200],
-  ['Minisúper El Güero', 'Fernando Díaz', 'Abarrotes', 'Mérida', 'negocio', 'mensual', 32, 'activa', [3, 7, 1430], 2980],
+  ['Paletería La Flor de Michoacán', 'Rosa Hernández', 'Paletería', 'Morelia', 'doble-especial', 'mensual', 210, 'activa', [3, 6, 184], 1320],
+  ['Nevería El Oso Polar', 'Jorge Ramírez', 'Nevería', 'Guadalajara', 'especial-super', 'anual', 400, 'activa', [7, 22, 540], 4870],
+  ['Abarrotes Don Chuy', 'Jesús Castillo', 'Abarrotes', 'Querétaro', 'doble', 'mensual', 95, 'activa', [1, 2, 262], 910],
+  ['Helados Tropicana', 'Mariana López', 'Nevería', 'Veracruz', 'doble', 'anual', 330, 'activa', [2, 5, 97], 1650],
+  ['Frutería Los Pinos', 'Alberto Sánchez', 'Frutería', 'Puebla', 'basica', 'mensual', 9, 'prueba', [1, 1, 48], 64],
+  ['Café Aroma de Olla', 'Daniela Torres', 'Cafetería', 'Oaxaca', 'doble', 'mensual', 12, 'prueba', [1, 3, 35], 210],
+  ['Papelería Arcoíris', 'Luis Mendoza', 'Papelería', 'León', 'doble', 'mensual', 4, 'prueba', [1, 1, 120], 18],
+  ['Paletas Doña Lupe', 'Guadalupe Ortiz', 'Paletería', 'Ciudad de México', 'basica', 'mensual', 150, 'suspendida', [1, 2, 45], 0],
+  ['Farmacia San Rafael', 'Ricardo Flores', 'Farmacia', 'Monterrey', 'doble', 'mensual', 70, 'vencida', [2, 4, 890], 12],
+  ['Tortillería La Güera', 'Patricia Ruiz', 'Tortillería', 'Toluca', 'basica', 'anual', 280, 'activa', [1, 2, 12], 2200],
+  ['Minisúper El Güero', 'Fernando Díaz', 'Abarrotes', 'Mérida', 'doble-especial', 'mensual', 32, 'activa', [3, 7, 1430], 2980],
 ]
 
 function crearSemilla(): Pick<EstadoAdmin, 'cuentas' | 'pagos' | 'folioPago'> {
@@ -183,6 +184,8 @@ function cargar(): EstadoAdmin {
 }
 
 export const estado = reactive<EstadoAdmin>(cargar())
+
+for (const cuenta of estado.cuentas) cuenta.planId = migrarPlanId(cuenta.planId)
 
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
 

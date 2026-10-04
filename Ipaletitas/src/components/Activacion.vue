@@ -2,19 +2,21 @@
 import { computed, reactive, ref } from 'vue'
 import { ArrowRight, CalendarDays, CircleCheck, Copy, KeyRound, Package, Store, Users } from '@lucide/vue'
 import FlujoEncabezado from './FlujoEncabezado.vue'
-import PaletaIcon from './icons/PaletaIcon.vue'
+import { mascotaPlan } from './planes/mascotas'
 import UiBadge from './ui/Badge.vue'
 import UiButton from './ui/Button.vue'
 import UiCard from './ui/Card.vue'
-import { DIAS_PRUEBA, PLANES, activarLicencia, estado, precioPlan } from '@/stores/negocio'
+import { DIAS_PRUEBA, PLAN_RECOMENDADO, acentoPlan, activarLicencia, estado, planPorId, precioPlan } from '@/stores/negocio'
 import { fecha, precio } from '@/lib/formato'
+import { tema } from '@/lib/tema'
 import { copiarTexto } from '@/lib/utils'
 
 defineEmits(['listo', 'volver'])
 
 const plan = computed(
-  () => PLANES.find((p) => p.id === (estado.planElegido?.planId ?? estado.licencia?.planId)) ?? PLANES[1]!,
+  () => planPorId(estado.planElegido?.planId ?? estado.licencia?.planId ?? PLAN_RECOMENDADO),
 )
+const mascota = computed(() => mascotaPlan[plan.value.id])
 const ciclo = computed(() => estado.planElegido?.ciclo ?? estado.licencia?.ciclo ?? 'mensual')
 const primeraVez = !estado.sucursales.length
 
@@ -48,11 +50,12 @@ const finPrueba = computed(() => {
 
 const limites = computed(() => {
   const l = plan.value.limites
-  const texto = (n: number, sufijo: string) => (n === Infinity ? `Ilimitados ${sufijo}` : `${n.toLocaleString('es-MX')} ${sufijo}`)
+  const texto = (n: number, singular: string, plural: string, ilimitado: string) =>
+    n === Infinity ? ilimitado : n === 1 ? `1 ${singular}` : `${n.toLocaleString('es-MX')} ${plural}`
   return [
-    { icono: Store, texto: l.sucursales === Infinity ? 'Sucursales ilimitadas' : `${l.sucursales} sucursal(es)` },
-    { icono: Users, texto: texto(l.usuarios, 'usuarios') },
-    { icono: Package, texto: texto(l.productos, 'productos') },
+    { icono: Store, texto: texto(l.sucursales, 'sucursal', 'sucursales', 'Sucursales ilimitadas') },
+    { icono: Users, texto: texto(l.usuarios, 'usuario', 'usuarios', 'Usuarios ilimitados') },
+    { icono: Package, texto: texto(l.productos, 'producto', 'productos', 'Productos ilimitados') },
   ]
 })
 
@@ -64,6 +67,7 @@ function activar() {
     sucursal: form.sucursal.trim(),
   })
   activada.value = true
+  window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
 async function copiar() {
@@ -75,15 +79,17 @@ async function copiar() {
 
 <template>
   <div class="ip-fondo min-h-screen w-full font-sans text-slate-900">
-    <FlujoEncabezado :paso="3" @volver="$emit('volver')" />
+    <FlujoEncabezado :paso="3" :sin-volver="activada" @volver="$emit('volver')" />
 
     <main class="mx-auto w-full max-w-6xl px-6 py-14 lg:py-20">
       <section v-if="activada && estado.licencia" class="mx-auto max-w-xl text-center">
-        <div class="relative mx-auto grid size-24 place-items-center rounded-full bg-emerald-500/10">
-          <CircleCheck class="size-12 text-emerald-500" />
-          <PaletaIcon class="absolute -top-2 -right-3" variant="gold" :size="36" />
+        <div class="relative mx-auto w-fit">
+          <img :src="mascota.src" :alt="mascota.alt" class="mascota-exito mx-auto h-40 w-auto" />
+          <span class="absolute right-0 bottom-2 grid size-11 place-items-center rounded-full bg-white shadow-lg">
+            <CircleCheck class="size-7 text-emerald-500" />
+          </span>
         </div>
-        <h1 class="mt-8 text-4xl font-extrabold tracking-tight">¡Tu licencia está activa!</h1>
+        <h1 class="mt-6 text-4xl font-extrabold tracking-tight">¡Tu suscripción está activa!</h1>
         <p class="mt-4 text-lg leading-8 text-slate-500">
           Plan {{ plan.nombre }} para <strong class="text-slate-800">{{ estado.licencia.negocio }}</strong>. Tu prueba
           gratis dura hasta el {{ fecha(estado.licencia.vence) }}.
@@ -158,10 +164,10 @@ async function copiar() {
 
         <UiCard class="relative overflow-hidden p-8 lg:sticky lg:top-28">
           <div class="absolute -top-16 -right-16 size-48 rounded-full bg-blue-500/10 blur-2xl" />
-          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Resumen de tu licencia</p>
-          <div class="mt-4 flex items-center justify-between">
-            <h2 class="text-2xl font-extrabold">Plan {{ plan.nombre }}</h2>
-            <PaletaIcon variant="blue" :size="36" />
+          <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Resumen de tu suscripción</p>
+          <div class="mt-4 flex items-center justify-between gap-4">
+            <h2 class="text-2xl font-extrabold" :style="{ color: acentoPlan(plan, tema === 'oscuro') }">Plan {{ plan.nombre }}</h2>
+            <img :src="mascota.src" :alt="mascota.alt" class="h-20 w-auto shrink-0" />
           </div>
           <p class="mt-1 text-sm text-slate-500">{{ plan.lema }}</p>
 
@@ -194,9 +200,28 @@ async function copiar() {
             Prueba gratis hasta el {{ finPrueba }}. Sin tarjeta: un asesor te contactará para formalizar tu licencia.
           </p>
 
-          <UiButton variant="ghost" class="mt-4 w-full" @click="$emit('volver')">Cambiar de licencia</UiButton>
+          <UiButton variant="ghost" class="mt-4 w-full" @click="$emit('volver')">Cambiar de plan</UiButton>
         </UiCard>
       </section>
     </main>
   </div>
 </template>
+
+<style scoped>
+.mascota-exito {
+  animation: mascota-entra 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes mascota-entra {
+  from {
+    opacity: 0;
+    transform: translateY(30%) scale(0.7) rotate(-8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascota-exito {
+    animation: none;
+  }
+}
+</style>

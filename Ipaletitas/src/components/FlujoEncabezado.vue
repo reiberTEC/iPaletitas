@@ -4,10 +4,10 @@ import PaletaIcon from './icons/PaletaIcon.vue'
 import UiButton from './ui/Button.vue'
 import TemaToggle from './ui/TemaToggle.vue'
 
-defineProps<{ paso: 1 | 2 | 3 }>()
+defineProps<{ paso: 1 | 2 | 3; sinVolver?: boolean }>()
 defineEmits(['volver'])
 
-const pasos = ['Crear cuenta', 'Elegir licencia', 'Activar']
+const pasos = ['Crear cuenta', 'Suscripción', 'Activar']
 </script>
 
 <template>
@@ -42,7 +42,7 @@ const pasos = ['Crear cuenta', 'Elegir licencia', 'Activar']
 
       <div class="flex items-center gap-2">
         <TemaToggle />
-        <UiButton variant="ghost" @click="$emit('volver')">
+        <UiButton v-if="!sinVolver" variant="ghost" @click="$emit('volver')">
           <ArrowLeft class="size-4" />
           Volver
         </UiButton>

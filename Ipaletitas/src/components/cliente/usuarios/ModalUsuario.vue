@@ -133,7 +133,7 @@ const pestanas = [
         role="tab"
         :aria-selected="pestana === p.id"
         :class="[
-          'relative flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border-0 px-3 py-2.5 text-sm font-semibold transition',
+          'relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-0 px-2 py-2.5 text-sm font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3',
           pestana === p.id ? 'ip-pestana-activa bg-white text-blue-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-900',
         ]"
         @click="pestana = p.id"
