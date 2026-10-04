@@ -42,6 +42,10 @@ html.oscuro {
 :where(html.oscuro) .bg-emerald-50 { background-color: rgb(16 185 129 / 0.12); }
 :where(html.oscuro) .bg-emerald-100 { background-color: rgb(16 185 129 / 0.18); }
 :where(html.oscuro) .bg-rose-50 { background-color: rgb(244 63 94 / 0.12); }
+:where(html.oscuro) .bg-violet-50 { background-color: rgb(139 92 246 / 0.12); }
+:where(html.oscuro) .bg-violet-100 { background-color: rgb(139 92 246 / 0.2); }
+:where(html.oscuro) .bg-orange-50 { background-color: rgb(249 115 22 / 0.12); }
+:where(html.oscuro) .bg-orange-100 { background-color: rgb(249 115 22 / 0.2); }
 :where(html.oscuro) .from-white { --tw-gradient-from: #3b82f6; }
 :where(html.oscuro) .to-slate-100 { --tw-gradient-to: #2563eb; }
 
@@ -56,6 +60,7 @@ html.oscuro {
 :where(html.oscuro) .divide-slate-100 > :not(:last-child) { border-color: #182132; }
 :where(html.oscuro) .ring-slate-100 { --tw-ring-color: #182132; }
 :where(html.oscuro) .ring-slate-200 { --tw-ring-color: #1f2a3d; }
+:where(html.oscuro) .ring-slate-200\/70 { --tw-ring-color: rgb(31 42 61 / 0.7); }
 :where(html.oscuro) .ring-blue-100 { --tw-ring-color: #172554; }
 :where(html.oscuro) .ring-amber-200 { --tw-ring-color: #1e3a8a; }
 
@@ -77,6 +82,9 @@ html.oscuro {
 :where(html.oscuro) .text-emerald-800 { color: #6ee7b7; }
 :where(html.oscuro) .text-rose-600,
 :where(html.oscuro) .text-rose-700 { color: #fb7185; }
+:where(html.oscuro) .text-violet-700 { color: #c4b5fd; }
+:where(html.oscuro) .text-orange-700 { color: #fdba74; }
+:where(html.oscuro) .text-slate-300 { color: #3b4a63; }
 :where(html.oscuro) .text-amber-300 { color: #60a5fa; }
 :where(html.oscuro) .text-amber-300\/80 { color: rgb(96 165 250 / 0.8); }
 
@@ -85,6 +93,7 @@ html.oscuro {
 :where(html.oscuro) .hover\:bg-slate-100\/80:hover { background-color: rgb(22 30 46 / 0.8); }
 :where(html.oscuro) .hover\:bg-blue-50:hover { background-color: rgb(37 99 235 / 0.16); }
 :where(html.oscuro) .hover\:bg-blue-50\/50:hover { background-color: rgb(37 99 235 / 0.1); }
+:where(html.oscuro) .hover\:bg-blue-100:hover { background-color: rgb(37 99 235 / 0.22); }
 :where(html.oscuro) .hover\:bg-emerald-100:hover { background-color: rgb(16 185 129 / 0.22); }
 :where(html.oscuro) .hover\:bg-rose-50:hover { background-color: rgb(244 63 94 / 0.14); }
 :where(html.oscuro) .hover\:text-slate-900:hover { color: #ffffff; }

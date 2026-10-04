@@ -18,6 +18,8 @@ export const precio = (valor: number) => monedaEntera.format(valor)
 export const fecha = (iso: string) => soloFecha.format(new Date(iso))
 export const fechaYHora = (iso: string) => fechaHora.format(new Date(iso))
 export const hora = (iso: string) => soloHora.format(new Date(iso))
+// "2025-01-20" se interpretaría en UTC y en México saldría un día antes; se fuerza la hora local.
+export const fechaDia = (dia: string) => soloFecha.format(new Date(`${dia}T00:00:00`))
 
 export function mismoDia(iso: string, dia = new Date()) {
   return new Date(iso).toDateString() === dia.toDateString()

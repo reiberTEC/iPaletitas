@@ -6,7 +6,7 @@ import { nuevoId } from '@/lib/utils'
 export { DIAS_PRUEBA, PLANES, precioPlan } from './catalogo'
 export type { CicloPago, Limite, Plan, PlanId } from './catalogo'
 
-export type Rol = 'Administrador' | 'Cajero' | 'Almacén'
+export type Rol = 'Administrador' | 'Gerente' | 'Cajero' | 'Almacén'
 export type MetodoPago = 'Efectivo' | 'Tarjeta' | 'Transferencia'
 
 export interface Sucursal {
@@ -15,14 +15,41 @@ export interface Sucursal {
   direccion: string
 }
 
+export const MODULOS = [
+  { id: 'ventas', nombre: 'Punto de venta' },
+  { id: 'productos', nombre: 'Productos' },
+  { id: 'entradas', nombre: 'Entradas' },
+  { id: 'historial', nombre: 'Historial' },
+  { id: 'usuarios', nombre: 'Usuarios' },
+  { id: 'sucursales', nombre: 'Sucursales' },
+  { id: 'licencia', nombre: 'Licencia' },
+] as const
+
+export const ACCIONES = [
+  { id: 'ver', nombre: 'Ver' },
+  { id: 'crear', nombre: 'Crear' },
+  { id: 'editar', nombre: 'Editar' },
+  { id: 'eliminar', nombre: 'Eliminar' },
+] as const
+
+export type ModuloId = (typeof MODULOS)[number]['id']
+export type AccionId = (typeof ACCIONES)[number]['id']
+export type Permiso = `${ModuloId}.${AccionId}`
+
 export interface Usuario {
   id: string
   nombre: string
   correo: string
+  telefono: string
+  puesto: string
+  fechaIngreso: string
   rol: Rol
   sucursalId: string
   activo: boolean
+  permisos: Permiso[]
 }
+
+export type DatosUsuario = Omit<Usuario, 'id'>
 
 export interface Producto {
   id: string
@@ -96,11 +123,46 @@ interface Estado {
 
 export const IVA = 0.16
 
-export const ROLES: { rol: Rol; descripcion: string }[] = [
-  { rol: 'Administrador', descripcion: 'Acceso total: licencia, usuarios, sucursales y reportes.' },
-  { rol: 'Cajero', descripcion: 'Cobra en el punto de venta y consulta el historial.' },
-  { rol: 'Almacén', descripcion: 'Da de alta productos y registra entradas.' },
+export const clavePermiso = (modulo: ModuloId, accion: AccionId): Permiso => `${modulo}.${accion}`
+
+export const TODOS_LOS_PERMISOS: Permiso[] = MODULOS.flatMap((m) => ACCIONES.map((a) => clavePermiso(m.id, a.id)))
+
+export const ordenarPermisos = (permisos: Permiso[]) => TODOS_LOS_PERMISOS.filter((p) => permisos.includes(p))
+
+export const ROLES: { rol: Rol; descripcion: string; permisos: Permiso[] }[] = [
+  {
+    rol: 'Administrador',
+    descripcion: 'Acceso total: licencia, usuarios, sucursales y reportes.',
+    permisos: TODOS_LOS_PERMISOS,
+  },
+  {
+    rol: 'Gerente',
+    descripcion: 'Lleva la operación diaria y al personal, sin tocar la licencia.',
+    permisos: [
+      'ventas.ver', 'ventas.crear', 'ventas.editar', 'ventas.eliminar',
+      'productos.ver', 'productos.crear', 'productos.editar', 'productos.eliminar',
+      'entradas.ver', 'entradas.crear', 'entradas.editar', 'entradas.eliminar',
+      'historial.ver',
+      'usuarios.ver', 'usuarios.crear', 'usuarios.editar',
+      'sucursales.ver',
+      'licencia.ver',
+    ],
+  },
+  {
+    rol: 'Cajero',
+    descripcion: 'Cobra en el punto de venta y consulta el historial.',
+    permisos: ['ventas.ver', 'ventas.crear', 'productos.ver', 'historial.ver'],
+  },
+  {
+    rol: 'Almacén',
+    descripcion: 'Da de alta productos y registra entradas.',
+    permisos: ['productos.ver', 'productos.crear', 'productos.editar', 'entradas.ver', 'entradas.crear', 'entradas.editar'],
+  },
 ]
+
+export const permisosDeRol = (rol: Rol): Permiso[] => [...(ROLES.find((r) => r.rol === rol) ?? ROLES[0]!).permisos]
+
+const hoy = () => new Date().toLocaleDateString('en-CA')
 
 const CLAVE_ALMACEN = 'ipaletitas:v1'
 
@@ -130,6 +192,14 @@ function cargar(): Estado {
 }
 
 export const estado = reactive<Estado>(cargar())
+
+// Usuarios guardados antes de que existieran puesto, teléfono, fecha de ingreso y permisos.
+for (const usuario of estado.usuarios as Partial<Usuario>[]) {
+  usuario.telefono ??= ''
+  usuario.puesto ??= usuario.rol ?? 'Cajero'
+  usuario.fechaIngreso ??= estado.licencia?.inicio.slice(0, 10) ?? hoy()
+  usuario.permisos ??= permisosDeRol(usuario.rol ?? 'Cajero')
+}
 
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
 
@@ -228,17 +298,25 @@ function sembrarDatos(nombreMatriz: string) {
       id: nuevoId(),
       nombre: estado.sesion?.nombre ?? 'Administrador',
       correo: estado.sesion?.correo ?? '',
+      telefono: estado.licencia?.telefono.replace(/\D/g, '') ?? '',
+      puesto: 'Dueño del negocio',
+      fechaIngreso: hoy(),
       rol: 'Administrador',
       sucursalId: matriz.id,
       activo: true,
+      permisos: permisosDeRol('Administrador'),
     },
     {
       id: nuevoId(),
       nombre: 'Laura Méndez',
       correo: 'laura@ejemplo.com',
+      telefono: '5534567890',
+      puesto: 'Cajera',
+      fechaIngreso: hoy(),
       rol: 'Cajero',
       sucursalId: matriz.id,
       activo: true,
+      permisos: permisosDeRol('Cajero'),
     },
   ]
 
@@ -376,13 +454,29 @@ export function registrarVenta(partidas: Partida[], metodoPago: MetodoPago, reci
   return venta
 }
 
-export function crearUsuario(datos: Omit<Usuario, 'id' | 'activo'>) {
-  estado.usuarios.push({ id: nuevoId(), activo: true, ...datos })
+export function esTitular(usuario: Pick<Usuario, 'correo'>) {
+  return !!estado.sesion && usuario.correo === estado.sesion.correo
 }
 
-export function alternarUsuario(id: string) {
+export function correoEnUso(correo: string, exceptoId?: string) {
+  return estado.usuarios.some((u) => u.correo === correo && u.id !== exceptoId)
+}
+
+export function crearUsuario(datos: DatosUsuario) {
+  const usuario: Usuario = { id: nuevoId(), ...datos, permisos: ordenarPermisos(datos.permisos) }
+  estado.usuarios.push(usuario)
+  return usuario
+}
+
+export function actualizarUsuario(id: string, datos: DatosUsuario) {
   const usuario = estado.usuarios.find((u) => u.id === id)
-  if (usuario) usuario.activo = !usuario.activo
+  if (!usuario) return
+  if (esTitular(usuario)) Object.assign(datos, { rol: 'Administrador', activo: true, permisos: TODOS_LOS_PERMISOS })
+  Object.assign(usuario, { ...datos, permisos: ordenarPermisos(datos.permisos) })
+}
+
+export function eliminarUsuario(id: string) {
+  estado.usuarios = estado.usuarios.filter((u) => u.id !== id || esTitular(u))
 }
 
 export function crearSucursal(datos: Omit<Sucursal, 'id'>) {
