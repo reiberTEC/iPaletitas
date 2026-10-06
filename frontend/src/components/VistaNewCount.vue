@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -13,8 +15,9 @@ const handleRegister = () => {
   console.log('Registrando cuenta:', email.value, password.value)
 }
 
-// Evento para regresar al Login
-defineEmits(['irLogin'])
+const irALogin = () => {
+  router.push({ name: 'login' })
+}
 </script>
 
 <template>
@@ -68,7 +71,10 @@ defineEmits(['irLogin'])
         </form>
 
         <div class="links">
-          <p class="link-register">¿Ya tienes una cuenta? <a href="#" @click.prevent="$emit('irLogin')">Inicia sesión</a></p>
+          <p class="link-register">
+            ¿Ya tienes una cuenta? 
+            <a href="#" @click.prevent="irALogin">Inicia sesión</a>
+          </p>
         </div>
       </div>
     </div>

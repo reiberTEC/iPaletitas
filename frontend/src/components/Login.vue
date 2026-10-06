@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
@@ -11,10 +13,14 @@ const togglePassword = () => {
 
 const handleLogin = () => {
   console.log('Iniciando sesión con:', email.value, password.value)
+  // TODO: reemplazar por el token real cuando exista el backend de autenticación
+  localStorage.setItem('token', email.value)
+  router.push({ name: 'inicio' })
 }
 
-// Declaramos un evento para avisarle a App.vue que cambie de pantalla
-defineEmits(['irRegistro'])
+const irARegistro = () => {
+  router.push({ name: 'registro' })
+}
 </script>
 
 <template>
@@ -70,8 +76,7 @@ defineEmits(['irRegistro'])
 
         <div class="links">
           <a href="#" class="link-forgot">Recordar contraseña</a>
-          <!-- Aquí conectamos el evento para ir a crear cuenta -->
-          <p class="link-register">¿Todavía no tienes una cuenta? <a href="#" @click.prevent="$emit('irRegistro')">Regístrate</a></p>
+          <p class="link-register">¿Todavía no tienes una cuenta? <a href="#" @click.prevent="irARegistro">Regístrate</a></p>
         </div>
       </div>
     </div>
