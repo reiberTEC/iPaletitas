@@ -1,0 +1,7 @@
+-r base.txt
+
+# Servidor de producción
+gunicorn
+
+# Archivos estáticos
+whitenoise
