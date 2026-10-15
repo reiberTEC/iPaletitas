@@ -1,8 +1,11 @@
 import { computed, reactive, watch } from 'vue'
 import {
-  DIAS_PRUEBA,
+  DIAS_GARANTIA,
   PLANES,
   PLAN_RECOMENDADO,
+  diasParaPagar,
+  faseLicencia,
+  finDeCobro,
   generarClave,
   migrarPlanId,
   type CicloPago,
@@ -10,10 +13,14 @@ import {
   type PlanId,
 } from './catalogo'
 import { nombreDesdeCorreo } from '@/lib/formato'
+import { ahora } from '@/lib/reloj'
+import type { TarjetaRegistrada } from '@/lib/tarjeta'
 import { nuevoId } from '@/lib/utils'
 
-export { DIAS_PRUEBA, PLANES, PLAN_RECOMENDADO, acentoPlan, planPorId, precioPlan } from './catalogo'
-export type { CicloPago, Limite, Plan, PlanId } from './catalogo'
+export { DIAS_COBRO, DIAS_GARANTIA, DIAS_PRUEBA, PLANES, PLAN_RECOMENDADO, acentoPlan, planPorId, precioPlan } from './catalogo'
+export type { CicloPago, FaseLicencia, Limite, Plan, PlanId } from './catalogo'
+
+export const CORREO_PAGOS = 'soporte@ipaletitas.com'
 
 export type Rol = 'Administrador' | 'Gerente' | 'Cajero' | 'Almacén'
 export type MetodoPago = 'Efectivo' | 'Tarjeta' | 'Transferencia'
@@ -91,6 +98,22 @@ export interface Partida {
   precio: number
 }
 
+export interface Pago {
+  fecha: string
+  monto: number
+  metodo: MetodoPago
+  recibido: number
+}
+
+export interface Anticipo {
+  cliente: string
+  telefono: string
+  entrega: string
+  pagos: Pago[]
+}
+
+export type DatosAnticipo = Pick<Anticipo, 'cliente' | 'telefono' | 'entrega'> & { monto: number }
+
 export interface Venta {
   id: string
   folio: number
@@ -101,6 +124,7 @@ export interface Venta {
   partidas: Partida[]
   total: number
   recibido: number
+  anticipo?: Anticipo
 }
 
 export interface Licencia {
@@ -112,13 +136,40 @@ export interface Licencia {
   negocio: string
   giro: string
   telefono: string
+  /** Prueba sin pago de las cuentas anteriores; las nuevas pagan al contratar. */
   enPrueba?: boolean
   suspendida?: boolean
+  /** Tarjeta o billetera con la que se pagó: cada renovación se le cobra sola. */
+  tarjeta?: TarjetaRegistrada
+  /** Fin de la semana gratis: hasta entonces puede pedir la devolución completa de su primer pago. */
+  garantiaHasta?: string
+  /** Pidió su devolución en la semana gratis: la suscripción terminó. */
+  cancelada?: boolean
+  facturacion?: Facturacion
+}
+
+export interface Facturacion {
+  pais: string
+  estado: string
+  direccion: string
+  codigoPostal: string
+}
+
+/** Identidad del negocio dentro del panel: su logo y el color que lo pinta. */
+export interface Marca {
+  logo: string | null
+  color: string | null
 }
 
 interface Estado {
   sesion: { correo: string; nombre: string } | null
+  titular: string
   licencia: Licencia | null
+  /** La semana gratis solo se da una vez por cuenta. */
+  pruebaUsada: boolean
+  /** Las cuentas recién creadas ven el recorrido guiado la primera vez que entran al panel. */
+  tutorialPendiente: boolean
+  marca: Marca
   planElegido: { planId: PlanId; ciclo: CicloPago } | null
   sucursalActivaId: string
   sucursales: Sucursal[]
@@ -174,11 +225,19 @@ export const permisosDeRol = (rol: Rol): Permiso[] => [...(ROLES.find((r) => r.r
 const hoy = () => new Date().toLocaleDateString('en-CA')
 
 const CLAVE_ALMACEN = 'ipaletitas:v1'
+/** Los demás negocios registrados en este navegador, por correo del titular. El abierto vive en CLAVE_ALMACEN. */
+const CLAVE_CUENTAS = 'ipaletitas:cuentas'
+
+type DatosNegocio = Omit<Estado, 'sesion'>
 
 function estadoVacio(): Estado {
   return {
     sesion: null,
+    titular: '',
     licencia: null,
+    pruebaUsada: false,
+    tutorialPendiente: false,
+    marca: { logo: null, color: null },
     planElegido: null,
     sucursalActivaId: '',
     sucursales: [],
@@ -200,7 +259,16 @@ function cargar(): Estado {
   }
 }
 
+function cargarOtrosNegocios(): Record<string, DatosNegocio> {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_CUENTAS) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
 export const estado = reactive<Estado>(cargar())
+const otrosNegocios = reactive<Record<string, DatosNegocio>>(cargarOtrosNegocios())
 
 // Usuarios guardados antes de que existieran puesto, teléfono, fecha de ingreso y permisos.
 for (const usuario of estado.usuarios as Partial<Usuario>[]) {
@@ -210,10 +278,27 @@ for (const usuario of estado.usuarios as Partial<Usuario>[]) {
   usuario.permisos ??= permisosDeRol(usuario.rol ?? 'Cajero')
 }
 
+// Antes cualquier sesión era la del dueño: se toma esa (o el primer administrador) como titular.
+if (estado.licencia && !estado.titular) {
+  estado.titular = estado.sesion?.correo ?? estado.usuarios.find((u) => u.rol === 'Administrador')?.correo ?? ''
+}
+
 if (estado.licencia) estado.licencia.planId = migrarPlanId(estado.licencia.planId)
+// Las cuentas que ya tuvieron su prueba de 14 días no reciben además la semana gratis.
+if (estado.licencia) estado.pruebaUsada = true
+for (const negocio of Object.values(otrosNegocios)) if (negocio.licencia) negocio.pruebaUsada = true
 if (estado.planElegido) estado.planElegido.planId = migrarPlanId(estado.planElegido.planId)
 
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
+watch(otrosNegocios, (valor) => localStorage.setItem(CLAVE_CUENTAS, JSON.stringify(valor)), { deep: true })
+
+export function guardarMarca(marca: Partial<Marca>) {
+  estado.marca = { ...estado.marca, ...marca }
+}
+
+export function quitarMarca() {
+  estado.marca = { logo: null, color: null }
+}
 
 export const planActual = computed(() => PLANES.find((p) => p.id === estado.licencia?.planId) ?? null)
 
@@ -223,25 +308,75 @@ export const sucursalActiva = computed(
 
 export const diasRestantes = computed(() => {
   if (!estado.licencia) return 0
-  const ms = new Date(estado.licencia.vence).getTime() - Date.now()
+  const ms = new Date(estado.licencia.vence).getTime() - ahora.value
   return Math.max(0, Math.ceil(ms / 86_400_000))
+})
+
+export const faseActual = computed(() =>
+  estado.licencia ? faseLicencia(estado.licencia, ahora.value) : 'vigente',
+)
+
+/** Mientras corre el plazo de cobro: cuántos días quedan y cuándo se suspende. */
+export const plazoDeCobro = computed(() => {
+  if (!estado.licencia || faseActual.value !== 'cobro') return null
+  return { dias: diasParaPagar(estado.licencia.vence, ahora.value), suspende: finDeCobro(estado.licencia.vence) }
 })
 
 export const ventasSucursal = computed(() =>
   estado.ventas.filter((v) => v.sucursalId === sucursalActiva.value?.id),
 )
 
+export function pagadoDe(venta: Venta) {
+  return venta.anticipo ? venta.anticipo.pagos.reduce((suma, p) => suma + p.monto, 0) : venta.total
+}
+
+export function saldoDe(venta: Venta) {
+  return Math.max(0, Math.round((venta.total - pagadoDe(venta)) * 100) / 100)
+}
+
+export const anticiposPendientes = computed(() =>
+  ventasSucursal.value.filter((v) => v.anticipo && saldoDe(v) > 0).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+)
+
 export const enPrueba = computed(() => estado.licencia?.enPrueba !== false)
 
-export const bloqueo = computed<'suspendida' | 'vencida' | null>(() => {
+/** Semana gratis en curso: hasta cuándo puede pedir la devolución de su primer pago. */
+export const semanaGratis = computed(() => {
+  const hasta = estado.licencia?.garantiaHasta
+  if (!hasta || estado.licencia?.cancelada || ahora.value >= new Date(hasta).getTime()) return null
+  return { hasta, dias: Math.max(1, Math.ceil((new Date(hasta).getTime() - ahora.value) / 86_400_000)) }
+})
+
+export type MotivoBloqueo = 'suspendida' | 'sinPago' | 'devolucion'
+
+/**
+ * suspendida: la pausó un administrador de iPaletitas · sinPago: pasó el plazo de cobro sin pagar ·
+ * devolucion: pidió su devolución en la semana gratis y la suscripción terminó.
+ */
+export const bloqueo = computed<MotivoBloqueo | null>(() => {
   if (!estado.licencia) return null
+  if (estado.licencia.cancelada) return 'devolucion'
   if (estado.licencia.suspendida) return 'suspendida'
-  return diasRestantes.value === 0 ? 'vencida' : null
+  return faseActual.value === 'suspendida' ? 'sinPago' : null
 })
 
 export function stock(producto: Producto, sucursalId = sucursalActiva.value?.id ?? '') {
   return producto.existencias[sucursalId] ?? 0
 }
+
+export type EstadoStock = 'agotado' | 'bajo' | 'ok'
+
+export function estadoStock(producto: Producto): EstadoStock {
+  const existencia = stock(producto)
+  if (existencia <= 0) return 'agotado'
+  return existencia <= producto.stockMinimo ? 'bajo' : 'ok'
+}
+
+export const agotados = computed(() => estado.productos.filter((p) => estadoStock(p) === 'agotado'))
+
+export const porAcabarse = computed(() =>
+  estado.productos.filter((p) => estadoStock(p) === 'bajo').sort((a, b) => stock(a) - stock(b)),
+)
 
 export function nombreSucursal(id: string) {
   return estado.sucursales.find((s) => s.id === id)?.nombre ?? 'Sin sucursal'
@@ -266,8 +401,85 @@ export function resumenUso(limite: Limite) {
     : `${uso(limite)} de ${maximo.toLocaleString('es-MX')} ${limite}`
 }
 
+const mismoCorreo = (a = '', b = '') => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+export const usuarioActual = computed(
+  () => estado.usuarios.find((u) => mismoCorreo(u.correo, estado.sesion?.correo)) ?? null,
+)
+
+export const sesionEsTitular = computed(() => !!estado.sesion && mismoCorreo(estado.sesion.correo, estado.titular))
+
+export function puede(permiso: Permiso) {
+  if (sesionEsTitular.value) return true
+  const usuario = usuarioActual.value
+  return !!usuario?.activo && usuario.permisos.includes(permiso)
+}
+
+/** Solo el titular y los administradores pueden moverse entre sucursales. */
+export const sucursalFija = computed(
+  () => !sesionEsTitular.value && usuarioActual.value?.rol !== 'Administrador',
+)
+
+/** Sesión de un empleado que ya fue dado de baja o desactivado. */
+export const accesoRevocado = computed(
+  () => !!estado.sesion && !!estado.licencia && !sesionEsTitular.value && !usuarioActual.value?.activo,
+)
+
+const perteneceA = (negocio: Pick<Estado, 'titular' | 'usuarios'>, correo: string) =>
+  mismoCorreo(negocio.titular, correo) || negocio.usuarios.some((u) => mismoCorreo(u.correo, correo))
+
+function negocioDe(correo: string): DatosNegocio | null {
+  if (perteneceA(estado, correo)) return estado
+  return Object.values(otrosNegocios).find((negocio) => perteneceA(negocio, correo)) ?? null
+}
+
+export const existeCuenta = (correo: string) => negocioDe(correo) !== null
+
+/** Negocios con licencia registrados en este navegador; el abierto primero. */
+export const negociosLocales = computed<DatosNegocio[]>(() =>
+  [estado, ...Object.values(otrosNegocios)].filter((negocio) => negocio.licencia && negocio.titular),
+)
+
+/** Guarda el negocio abierto con los demás y deja cargado el indicado (o uno vacío). */
+function abrirNegocio(siguiente: DatosNegocio | null) {
+  const copia = (datos: DatosNegocio) => JSON.parse(JSON.stringify(datos)) as Estado
+  const abierto = siguiente ? copia(siguiente) : null
+  if (estado.titular) {
+    const { sesion: _sesion, ...actual } = copia(estado)
+    otrosNegocios[estado.titular.toLowerCase()] = actual
+  }
+  if (abierto) delete otrosNegocios[abierto.titular.toLowerCase()]
+  Object.assign(estado, estadoVacio(), abierto, { sesion: null })
+}
+
+export function validarIngreso(correo: string): string | null {
+  const negocio = negocioDe(correo)
+  if (!negocio) return 'No encontramos una cuenta con ese correo. Revisa que esté bien escrito o crea tu cuenta.'
+  if (!negocio.licencia || mismoCorreo(correo, negocio.titular)) return null
+  const usuario = negocio.usuarios.find((u) => mismoCorreo(u.correo, correo))
+  if (!usuario?.activo) return 'Tu usuario está desactivado. Habla con el administrador de tu negocio.'
+  return null
+}
+
+/** Cuenta nueva: el correo queda como titular de un negocio vacío que todavía no elige plan. */
+export function registrarCuenta(correo: string): string | null {
+  const limpio = correo.trim().toLowerCase()
+  if (existeCuenta(limpio)) return 'Ya hay una cuenta con este correo. Inicia sesión para entrar a ella.'
+  abrirNegocio(null)
+  estado.titular = limpio
+  estado.sesion = { correo: limpio, nombre: nombreDesdeCorreo(limpio, 'Titular') }
+  return null
+}
+
 export function iniciarSesion(correo: string) {
-  estado.sesion = { correo, nombre: nombreDesdeCorreo(correo, 'Titular') }
+  const limpio = correo.trim().toLowerCase()
+  if (!perteneceA(estado, limpio)) {
+    const negocio = negocioDe(limpio)
+    if (negocio) abrirNegocio(negocio)
+  }
+  const usuario = estado.usuarios.find((u) => mismoCorreo(u.correo, limpio))
+  estado.sesion = { correo: limpio, nombre: usuario?.nombre ?? nombreDesdeCorreo(limpio, 'Titular') }
+  if (usuario && sucursalFija.value) estado.sucursalActivaId = usuario.sucursalId
 }
 
 export function cerrarSesion() {
@@ -278,11 +490,21 @@ export function elegirPlan(planId: PlanId, ciclo: CicloPago) {
   estado.planElegido = { planId, ciclo }
 }
 
-export function activarLicencia(datos: { negocio: string; giro: string; telefono: string; sucursal: string }) {
+export function activarLicencia(datos: {
+  negocio: string
+  giro: string
+  telefono: string
+  sucursal: string
+  tarjeta: TarjetaRegistrada
+  facturacion: Facturacion
+}) {
   const eleccion = estado.planElegido ?? { planId: PLAN_RECOMENDADO, ciclo: 'mensual' as const }
+  if (!estado.licencia || !estado.titular || !usuarioActual.value) estado.titular = estado.sesion?.correo ?? ''
   const inicio = new Date()
+  ahora.value = inicio.getTime()
   const vence = new Date(inicio)
-  vence.setDate(vence.getDate() + DIAS_PRUEBA)
+  vence.setMonth(vence.getMonth() + (eleccion.ciclo === 'anual' ? 12 : 1))
+  const garantia = estado.pruebaUsada ? undefined : new Date(inicio.getTime() + DIAS_GARANTIA * 86_400_000)
 
   estado.licencia = {
     ...eleccion,
@@ -292,12 +514,23 @@ export function activarLicencia(datos: { negocio: string; giro: string; telefono
     negocio: datos.negocio,
     giro: datos.giro,
     telefono: datos.telefono,
-    enPrueba: true,
+    enPrueba: false,
     suspendida: false,
+    tarjeta: datos.tarjeta,
+    garantiaHasta: garantia?.toISOString(),
+    facturacion: datos.facturacion,
   }
+  estado.pruebaUsada = true
   estado.planElegido = null
 
-  if (!estado.sucursales.length) sembrarDatos(datos.sucursal)
+  if (!estado.sucursales.length) {
+    sembrarDatos(datos.sucursal)
+    estado.tutorialPendiente = true
+  }
+}
+
+export function terminarTutorial() {
+  estado.tutorialPendiente = false
 }
 
 function sembrarDatos(nombreMatriz: string) {
@@ -332,16 +565,11 @@ function sembrarDatos(nombreMatriz: string) {
     },
   ]
 
+  // Uno por categoría, y el de chocolate por debajo del mínimo para que se vea el aviso de inventario.
   const catalogo: [string, string, number, number, number][] = [
     ['Paleta de mango', 'Paletas de agua', 18, 7, 42],
-    ['Paleta de fresa', 'Paletas de agua', 18, 7, 35],
-    ['Paleta de limón', 'Paletas de agua', 16, 6, 8],
-    ['Paleta de chocolate', 'Paletas de leche', 22, 9, 28],
-    ['Paleta de nuez', 'Paletas de leche', 24, 10, 5],
-    ['Paleta de coco', 'Paletas de leche', 22, 9, 19],
-    ['Agua de horchata 1 L', 'Aguas frescas', 30, 11, 14],
-    ['Agua de jamaica 1 L', 'Aguas frescas', 30, 10, 3],
-    ['Helado de vainilla 1/2 L', 'Helados', 65, 28, 12],
+    ['Paleta de chocolate', 'Paletas de leche', 22, 9, 6],
+    ['Agua de horchata 1 L', 'Aguas frescas', 30, 11, 24],
   ]
 
   estado.productos = catalogo.map(([nombre, categoria, precio, costo, existencia], i) => ({
@@ -369,10 +597,8 @@ function sembrarDatos(nombreMatriz: string) {
 
       const a = productos[(dia + t) % productos.length]!
       const b = productos[(dia + t * 3 + 1) % productos.length]!
-      const partidas: Partida[] = [
-        { productoId: a.id, nombre: a.nombre, cantidad: 1 + (t % 3), precio: a.precio },
-        { productoId: b.id, nombre: b.nombre, cantidad: 1, precio: b.precio },
-      ]
+      const partidas: Partida[] = [{ productoId: a.id, nombre: a.nombre, cantidad: 1 + (t % 3), precio: a.precio }]
+      if (b !== a) partidas.push({ productoId: b.id, nombre: b.nombre, cantidad: 1, precio: b.precio })
       const total = partidas.reduce((suma, p) => suma + p.precio * p.cantidad, 0)
 
       ventas.push({
@@ -442,9 +668,16 @@ export function registrarEntrada(datos: {
   })
 }
 
-export function registrarVenta(partidas: Partida[], metodoPago: MetodoPago, recibido: number) {
+export function registrarVenta(
+  partidas: Partida[],
+  metodoPago: MetodoPago,
+  recibido: number,
+  anticipo?: DatosAnticipo,
+) {
   const sucursalId = sucursalActiva.value?.id ?? ''
   const total = partidas.reduce((suma, p) => suma + p.precio * p.cantidad, 0)
+  const fecha = new Date().toISOString()
+  const cobrado = anticipo ? anticipo.monto : total
 
   for (const partida of partidas) {
     const producto = estado.productos.find((p) => p.id === partida.productoId)
@@ -454,20 +687,44 @@ export function registrarVenta(partidas: Partida[], metodoPago: MetodoPago, reci
   const venta: Venta = {
     id: nuevoId(),
     folio: estado.folioVenta++,
-    fecha: new Date().toISOString(),
+    fecha,
     sucursalId,
     cajero: estado.sesion?.nombre ?? 'Cajero',
     metodoPago,
     partidas,
     total,
-    recibido: metodoPago === 'Efectivo' ? recibido : total,
+    recibido: metodoPago === 'Efectivo' ? recibido : cobrado,
   }
+
+  if (anticipo) {
+    const { monto, ...cliente } = anticipo
+    venta.anticipo = { ...cliente, pagos: [{ fecha, monto, metodo: metodoPago, recibido: venta.recibido }] }
+  }
+
   estado.ventas.push(venta)
+  return estado.ventas[estado.ventas.length - 1]!
+}
+
+export function abonarAnticipo(ventaId: string, monto: number, metodo: MetodoPago, recibido: number) {
+  const venta = estado.ventas.find((v) => v.id === ventaId)
+  if (!venta?.anticipo) return null
+  const abono = Math.min(monto, saldoDe(venta))
+  if (abono <= 0) return null
+  venta.anticipo.pagos.push({
+    fecha: new Date().toISOString(),
+    monto: abono,
+    metodo,
+    recibido: metodo === 'Efectivo' ? recibido : abono,
+  })
   return venta
 }
 
 export function esTitular(usuario: Pick<Usuario, 'correo'>) {
-  return !!estado.sesion && usuario.correo === estado.sesion.correo
+  return mismoCorreo(usuario.correo, estado.titular)
+}
+
+export function esSesionActual(usuario: Pick<Usuario, 'correo'>) {
+  return mismoCorreo(usuario.correo, estado.sesion?.correo)
 }
 
 export function correoEnUso(correo: string, exceptoId?: string) {
@@ -496,15 +753,22 @@ export function crearSucursal(datos: Omit<Sucursal, 'id'>) {
 }
 
 export function cambiarSucursal(id: string) {
+  if (sucursalFija.value) return
   estado.sucursalActivaId = id
 }
 
 export type AjusteLicencia = Partial<
-  Pick<Licencia, 'planId' | 'ciclo' | 'clave' | 'vence' | 'enPrueba' | 'suspendida'>
+  Pick<Licencia, 'planId' | 'ciclo' | 'clave' | 'vence' | 'enPrueba' | 'suspendida' | 'tarjeta' | 'cancelada'>
 >
 
 export function ajustarLicencia(cambios: AjusteLicencia) {
   if (estado.licencia) Object.assign(estado.licencia, cambios)
+}
+
+/** Ajuste desde la consola de iPaletitas a cualquier negocio de este navegador, abierto o no. */
+export function ajustarLicenciaDe(titular: string, cambios: AjusteLicencia) {
+  const negocio = mismoCorreo(titular, estado.titular) ? estado : otrosNegocios[titular.toLowerCase()]
+  if (negocio?.licencia) Object.assign(negocio.licencia, cambios)
 }
 
 export function cambiarPlan(planId: PlanId, ciclo: CicloPago) {

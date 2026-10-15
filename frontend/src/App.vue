@@ -32,8 +32,7 @@ function ir(vista: Vista) {
   window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
-function registrarse(correo: string) {
-  iniciarSesion(correo)
+function registrarse() {
   ir('planes')
 }
 
@@ -50,6 +49,11 @@ function ingresar(correo: string, comoAdmin: boolean) {
 function salirCliente() {
   cerrarSesion()
   ir('home')
+}
+
+function cambiarCuenta() {
+  cerrarSesion()
+  ir('login')
 }
 
 function salirAdmin() {
@@ -85,12 +89,13 @@ function salirAdmin() {
     v-else-if="vistaActual === 'activacion' && estado.sesion"
     @listo="ir('cliente')"
     @volver="ir('planes')"
+    @cambiarCuenta="cambiarCuenta"
   />
 
   <PanelAdmin v-else-if="vistaActual === 'admin' && puedeVerAdmin" @salir="salirAdmin" />
 
   <template v-else-if="vistaActual === 'cliente' && clienteConLicencia">
-    <CuentaBloqueada v-if="bloqueo" :motivo="bloqueo" @salir="salirCliente" @cambiarPlan="ir('planes')" />
+    <CuentaBloqueada v-if="bloqueo" :motivo="bloqueo" @salir="salirCliente" @contratar="ir('planes')" />
     <PanelCliente v-else @salir="salirCliente" />
   </template>
 
@@ -98,6 +103,6 @@ function salirAdmin() {
 
   <TemaToggle
     v-if="vistaActual === 'login' || vistaActual === 'registro'"
-    class="fixed top-5 right-5 z-[10000] bg-white/90 shadow-lg ring-1 ring-slate-200 backdrop-blur"
+    class="fixed top-[max(1.25rem,env(safe-area-inset-top))] right-[max(1.25rem,env(safe-area-inset-right))] z-50 bg-white ring-1 ring-slate-200"
   />
 </template>

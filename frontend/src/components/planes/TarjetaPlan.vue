@@ -1,337 +1,303 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { acentoPlan, precioPlan, type CicloPago, type Plan } from '@/stores/catalogo'
+import { ArrowRight } from '@lucide/vue'
+import { PLANES, acentoPlan, precioPlan, type CicloPago, type Plan } from '@/stores/catalogo'
 import { precio } from '@/lib/formato'
 import { tema } from '@/lib/tema'
 import { mascotaPlan } from './mascotas'
 
 const props = withDefaults(
-  defineProps<{ plan: Plan; ciclo: CicloPago; actual?: boolean; textoBoton?: string; soloVer?: boolean }>(),
-  { actual: false, textoBoton: 'Elegir plan', soloVer: false },
+  defineProps<{
+    plan: Plan
+    ciclo: CicloPago
+    actual?: boolean
+    textoBoton?: string
+    soloVer?: boolean
+    /** Cada plan es más alto que el anterior, como barras de una gráfica. */
+    escalonado?: boolean
+  }>(),
+  { actual: false, textoBoton: 'Elegir plan', soloVer: false, escalonado: false },
 )
 
 defineEmits<{ elegir: [plan: Plan] }>()
 
 const mascota = computed(() => mascotaPlan[props.plan.id])
+const escalon = computed(() => Math.max(0, PLANES.findIndex((p) => p.id === props.plan.id)))
 </script>
 
 <template>
   <article
-    :class="['plan', `plan-${plan.id}`, { destacado: plan.destacado, actual }]"
-    :style="{ '--acento': acentoPlan(plan, tema === 'oscuro') }"
+    :class="['plan', `plan-${plan.id}`, { actual, escalonado }]"
+    :style="{ '--acento': acentoPlan(plan, tema === 'oscuro'), '--escalon': escalon }"
   >
-    <img :src="mascota.src" :alt="mascota.alt" class="plan-mascota" />
+    <img :src="mascota.src" :alt="mascota.alt" class="plan-mascota" loading="lazy" width="120" height="150" />
 
     <div class="plan-tarjeta">
-      <span v-if="actual" class="insignia insignia-actual">Tu plan actual</span>
-      <span v-else-if="plan.destacado" class="insignia">Más popular</span>
-
-      <h2 class="plan-nombre">{{ plan.nombre }}</h2>
-      <p class="plan-lema">{{ plan.lema }}</p>
+      <h3 class="plan-nombre font-display">{{ plan.nombre }}</h3>
 
       <p class="plan-precio">
-        <span class="monto">{{ precio(precioPlan(plan, ciclo)) }}</span>
-        <span class="periodo">MXN / {{ ciclo === 'mensual' ? 'mes' : 'año' }}</span>
+        <span class="monto font-display">{{ precio(precioPlan(plan, ciclo)) }}</span>
+        <span class="periodo">al {{ ciclo === 'mensual' ? 'mes' : 'año' }}</span>
       </p>
       <p v-if="ciclo === 'anual'" class="ahorro">Ahorras {{ precio(plan.precioMensual * 2) }} al año</p>
-
-      <button v-if="!soloVer" type="button" class="btn-plan" :disabled="actual" @click="$emit('elegir', plan)">
-        {{ actual ? 'Plan actual' : textoBoton }}
-      </button>
+      <p class="plan-lema">{{ plan.lema }}</p>
+      <p v-if="actual" class="plan-nota">Es tu plan actual</p>
+      <p v-else-if="plan.destacado" class="plan-nota">Nuestra recomendación</p>
 
       <p class="incluye">{{ plan.incluyeDe ? `Todo lo de ${plan.incluyeDe}, más:` : 'Incluye:' }}</p>
-      <ul class="funciones">
+      <ul class="estaciones">
         <li v-for="funcion in plan.incluye" :key="funcion">{{ funcion }}</li>
       </ul>
+
+      <button v-if="!soloVer" type="button" class="plan-boton" :disabled="actual" @click="$emit('elegir', plan)">
+        {{ actual ? 'Plan actual' : textoBoton }}
+        <ArrowRight v-if="!actual" class="size-5" aria-hidden="true" />
+      </button>
     </div>
   </article>
 </template>
 
 <style scoped>
+/* Cada plan es una línea del metro: su color corre por la lista y cada función es una estación. */
 .plan {
+  --tinta-plan: color-mix(in oklab, var(--acento) 58%, #000);
   position: relative;
   display: flex;
+  flex-direction: column;
+  padding-top: 7.5rem;
 }
 
 .plan-mascota {
   position: absolute;
-  right: 14px;
-  bottom: calc(100% - 46px);
-  z-index: 0;
-  height: 180px;
+  top: 0.4rem;
+  right: 1.25rem;
   width: auto;
-  opacity: 0;
-  transform: translateY(75%) scale(0.6) rotate(-8deg);
-  transform-origin: bottom center;
-  transition:
-    transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-    opacity 0.2s ease;
+  height: 7.4rem;
   pointer-events: none;
-}
-
-.plan:hover .plan-mascota,
-.plan:focus-within .plan-mascota,
-.plan.actual .plan-mascota {
-  opacity: 1;
-  transform: translateY(0) scale(1) rotate(0deg);
+  transition: transform 220ms var(--ease-out);
+  transform-origin: bottom center;
 }
 
 .plan-tarjeta {
-  position: relative;
-  z-index: 1;
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  padding: 2rem 1.6rem 1.8rem;
-  border: 2px solid transparent;
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.07);
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease,
-    border-color 0.3s ease;
-}
-
-.plan:hover .plan-tarjeta,
-.plan:focus-within .plan-tarjeta {
-  transform: translateY(-6px);
-  border-color: var(--acento);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
-}
-
-.plan.destacado .plan-tarjeta,
-.plan.actual .plan-tarjeta {
-  border-color: var(--acento);
-}
-
-.plan-especial-super .plan-tarjeta {
-  background: linear-gradient(160deg, #1e293b, #0f172a);
-  color: #fff;
-}
-
-.insignia {
-  position: absolute;
-  top: -14px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 0.35rem 0.9rem;
-  border-radius: 20px;
-  background: var(--acento);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  white-space: nowrap;
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15);
-}
-
-.insignia-actual {
-  background: #0f172a;
-}
-
-.plan-especial-super .insignia-actual {
-  background: var(--acento);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--acento) 13%, #fff);
   color: #0f172a;
+  overflow: hidden;
+}
+
+.plan-tarjeta > :not(.plan-boton) {
+  margin-inline: 1.6rem;
 }
 
 .plan-nombre {
-  margin: 0 0 0.3rem;
-  color: var(--acento);
+  margin-top: 1.6rem;
+  color: var(--tinta-plan);
   font-size: 1.6rem;
-  font-weight: 900;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.plan-nota {
+  margin-top: 0.35rem;
+  color: var(--tinta-plan);
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .plan-lema {
-  min-height: 2.6em;
-  margin: 0;
-  color: #64748b;
-  font-size: 0.95rem;
-  line-height: 1.35;
-}
-
-.plan-especial-super .plan-lema {
-  color: #cbd5e1;
+  margin-top: 0.75rem;
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1.45;
 }
 
 .plan-precio {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 0.4rem;
-  margin: 1.2rem 0 0;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
 }
 
 .monto {
-  color: #0f172a;
-  font-size: 2.6rem;
-  font-weight: 900;
-  letter-spacing: -1px;
-}
-
-.plan-especial-super .monto {
-  color: #fff;
+  font-size: clamp(2.6rem, 3.6vw, 3.25rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 
 .periodo {
-  color: #64748b;
-  font-size: 0.9rem;
-}
-
-.plan-especial-super .periodo {
-  color: #94a3b8;
+  color: #334155;
+  font-size: 1rem;
 }
 
 .ahorro {
-  margin: 0.2rem 0 0;
-  color: #10b981;
-  font-size: 0.8rem;
+  margin-top: 0.4rem;
+  color: #047857;
+  font-size: 1rem;
   font-weight: 700;
 }
 
-.btn-plan {
-  margin-top: 1.2rem;
-  padding: 0.85rem 1rem;
-  border: 2px solid var(--acento);
-  border-radius: 14px;
-  background: var(--acento);
-  color: #fff;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    filter 0.2s,
-    transform 0.2s;
-}
-
-.btn-plan:hover:not(:disabled) {
-  filter: brightness(1.08);
-  transform: translateY(-1px);
-}
-
-.btn-plan:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--acento) 40%, transparent);
-  outline-offset: 2px;
-}
-
-.btn-plan:disabled {
-  background: transparent;
-  color: var(--acento);
-  cursor: default;
-}
-
-.plan-especial-super .btn-plan:not(:disabled) {
-  color: #0f172a;
-}
-
 .incluye {
-  margin: 1.5rem 0 0.8rem;
-  color: #334155;
-  font-size: 0.85rem;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  margin-top: 1.6rem;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
-.plan-especial-super .incluye {
-  color: #e2e8f0;
-}
-
-.funciones {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  margin: 0;
+.estaciones {
+  position: relative;
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.9rem;
+  margin-bottom: 1.8rem;
   padding: 0;
   list-style: none;
 }
 
-.funciones li {
+.estaciones::before {
+  content: '';
+  position: absolute;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  left: calc(0.55rem - 2px);
+  width: 4px;
+  border-radius: 2px;
+  background: var(--acento);
+}
+
+.estaciones li {
   position: relative;
-  padding-left: 1.7rem;
-  color: #334155;
-  font-size: 0.93rem;
+  padding-left: 1.85rem;
+  color: #1e293b;
+  font-size: 1rem;
   line-height: 1.4;
 }
 
-.funciones li::before {
-  content: '✓';
+.estaciones li::before {
+  content: '';
   position: absolute;
-  top: -1px;
+  top: 0.2rem;
   left: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 3px solid var(--acento);
+  border-radius: 50%;
+  background: #fff;
+}
+
+.plan-boton {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: var(--acento);
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 4rem;
+  margin-top: auto;
+  padding: 0 1.6rem;
+  border: 0;
+  background: var(--tinta-plan);
   color: #fff;
-  font-size: 0.7rem;
-  font-weight: 900;
+  font: inherit;
+  font-size: 1.125rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms var(--ease-out);
 }
 
-.plan-especial-super .funciones li {
-  color: #e2e8f0;
+.plan-boton:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
-.plan-especial-super .funciones li::before {
-  color: #0f172a;
+.plan-boton:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: -3px;
 }
 
-/* Modo oscuro: tarjetas negras (el acento azul de Especial Super llega por acentoPlan) */
+.plan-boton:disabled {
+  background: color-mix(in oklab, var(--acento) 24%, #fff);
+  color: var(--tinta-plan);
+  cursor: default;
+}
+
+.plan-boton :deep(svg) {
+  transition: transform 200ms var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .plan-boton:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--acento) 48%, #000);
+  }
+
+  .plan-boton:hover:not(:disabled) :deep(svg) {
+    transform: translateX(4px);
+  }
+
+  .plan:hover .plan-mascota {
+    transform: translateY(-6px) rotate(-3deg);
+  }
+}
+
+/* Escalones: de la línea Básica a Especial Super cada tarjeta crece como una barra. */
+@media (min-width: 1280px) {
+  .plan.escalonado .plan-tarjeta {
+    min-height: calc(36rem + var(--escalon) * 3.25rem);
+  }
+}
+
+/* Modo oscuro */
+html.oscuro .plan {
+  --tinta-plan: color-mix(in oklab, var(--acento) 70%, #fff);
+}
+
 html.oscuro .plan-tarjeta {
-  background: #0f1522;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
-}
-
-html.oscuro .plan-especial-super .plan-tarjeta {
-  background: linear-gradient(160deg, #0b1730, #05070c);
-}
-
-html.oscuro .monto {
+  background: color-mix(in oklab, var(--acento) 14%, #0f1522);
   color: #f1f5f9;
 }
 
-html.oscuro .plan-nombre,
-html.oscuro .btn-plan:disabled {
-  color: color-mix(in srgb, var(--acento) 65%, #fff);
-}
-
 html.oscuro .plan-lema,
-html.oscuro .periodo {
-  color: #8a97ab;
+html.oscuro .periodo,
+html.oscuro .estaciones li {
+  color: #cbd5e1;
 }
 
 html.oscuro .incluye {
-  color: #cbd5e1;
+  color: #f1f5f9;
 }
 
-html.oscuro .funciones li {
-  color: #cbd5e1;
+html.oscuro .ahorro {
+  color: #34d399;
 }
 
-html.oscuro .insignia-actual {
-  background: #2563eb;
-  color: #fff;
+html.oscuro .estaciones li::before {
+  background: #0f1522;
 }
 
-/* En pantallas táctiles no hay hover: la mascota se muestra siempre */
-@media (hover: none) {
-  .plan-mascota {
-    opacity: 1;
-    transform: none;
+html.oscuro .plan-boton {
+  background: color-mix(in oklab, var(--acento) 55%, #000);
+}
+
+html.oscuro .plan-boton:disabled {
+  background: color-mix(in oklab, var(--acento) 22%, #0f1522);
+  color: var(--tinta-plan);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.oscuro .plan-boton:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--acento) 45%, #000);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .plan-mascota,
-  .plan-tarjeta {
-    transition: opacity 0.2s ease;
-  }
-
-  .plan:hover .plan-mascota,
-  .plan:focus-within .plan-mascota {
-    transform: none;
+  .plan-boton :deep(svg) {
+    transition: none;
   }
 }
 </style>

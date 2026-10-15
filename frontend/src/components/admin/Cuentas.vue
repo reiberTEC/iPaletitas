@@ -17,7 +17,7 @@ const filtroPlan = ref<'todos' | PlanId>('todos')
 
 const opcionesEstado = computed(() => [
   { id: 'Todas' as const, total: metricas.value.total },
-  ...(['Activa', 'Prueba', 'Vencida', 'Suspendida'] as EstadoCuenta[]).map((id) => ({
+  ...(['Activa', 'En prueba', 'En periodo de cobro', 'Suspendida', 'Cancelada'] as EstadoCuenta[]).map((id) => ({
     id,
     total: metricas.value.porEstado[id],
   })),

@@ -4,13 +4,13 @@ import { Search } from '@lucide/vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
 import EstadoBadge from './EstadoBadge.vue'
-import { DIAS_PRUEBA, planPorId } from '@/stores/catalogo'
+import { DIAS_COBRO, DIAS_PRUEBA, finDeCobro, planPorId } from '@/stores/catalogo'
 import { cuentas, diasPara, estadoDe, type Cuenta } from '@/stores/admin'
-import { fecha } from '@/lib/formato'
+import { fecha, plural } from '@/lib/formato'
 
 defineEmits<{ verCuenta: [id: string] }>()
 
-type Filtro = 'todas' | 'porVencer' | 'vencidas' | 'suspendidas'
+type Filtro = 'todas' | 'porVencer' | 'cobro' | 'suspendidas'
 
 const filtro = ref<Filtro>('todas')
 const busqueda = ref('')
@@ -21,8 +21,8 @@ const reglas: Record<Filtro, { etiqueta: string; cumple: (c: Cuenta) => boolean 
     etiqueta: 'Vencen en 7 días',
     cumple: (c) => !c.suspendida && diasPara(c.vence) >= 0 && diasPara(c.vence) <= 7,
   },
-  vencidas: { etiqueta: 'Vencidas', cumple: (c) => estadoDe(c) === 'Vencida' },
-  suspendidas: { etiqueta: 'Suspendidas', cumple: (c) => c.suspendida },
+  cobro: { etiqueta: 'En periodo de cobro', cumple: (c) => estadoDe(c) === 'En periodo de cobro' },
+  suspendidas: { etiqueta: 'Suspendidas', cumple: (c) => estadoDe(c) === 'Suspendida' },
 }
 
 const filtros = computed(() =>
@@ -42,6 +42,16 @@ const lista = computed(() => {
 })
 
 function barra(cuenta: Cuenta) {
+  const estado = estadoDe(cuenta)
+  if (estado === 'Suspendida') return { ancho: '100%', color: 'bg-rose-500', texto: 'Sin acceso' }
+  if (estado === 'En periodo de cobro') {
+    const quedan = Math.max(1, diasPara(finDeCobro(cuenta.vence)))
+    return {
+      ancho: `${(quedan / DIAS_COBRO) * 100}%`,
+      color: 'bg-amber-400',
+      texto: `Cobro: ${plural(quedan, 'día', 'días')} para pagar`,
+    }
+  }
   const dias = diasPara(cuenta.vence)
   const total = cuenta.enPrueba ? DIAS_PRUEBA : cuenta.ciclo === 'anual' ? 365 : 30
   return {
@@ -54,7 +64,10 @@ function barra(cuenta: Cuenta) {
 
 <template>
   <div>
-    <Encabezado titulo="Licencias" descripcion="Claves emitidas, tipo de licencia y cuándo vence cada una." />
+    <Encabezado
+      titulo="Licencias"
+      :descripcion="`Claves emitidas, tipo de licencia y cuándo vence cada una. Al vencer, tienen ${DIAS_COBRO} días para pagar antes de suspenderse.`"
+    />
 
     <UiCard class="mb-6 bg-white p-4">
       <div class="flex flex-col gap-4 lg:flex-row lg:items-center">

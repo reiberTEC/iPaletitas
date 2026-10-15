@@ -111,7 +111,7 @@ function ir(seccion: SeccionAdmin) {
         </p>
         <p class="mt-2 text-sm text-slate-300">
           <strong class="text-white">{{ metricas.total }}</strong> cuentas ·
-          <strong class="text-white">{{ metricas.porEstado.Prueba }}</strong> en prueba
+          <strong class="text-white">{{ metricas.porEstado['En prueba'] }}</strong> en prueba
         </p>
       </div>
     </aside>

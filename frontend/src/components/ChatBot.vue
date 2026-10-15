@@ -1,358 +1,263 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { MessageCircle, Send, X } from '@lucide/vue'
+import { MessageCircle, X } from '@lucide/vue'
 import PaletaIcon from './icons/PaletaIcon.vue'
+import Conversacion from './asistente/Conversacion.vue'
+import type { Accion } from '@/lib/asistente'
 
 const emit = defineEmits(['irRegistro'])
 
-type Mensaje = { id: number; autor: 'bot' | 'usuario'; texto: string }
-
-let siguienteId = 1
 let avisoTimer: ReturnType<typeof setTimeout> | undefined
+let ocultarAvisoTimer: ReturnType<typeof setTimeout> | undefined
 
 const abierto = ref(false)
 const mostrarAviso = ref(false)
-const escribiendo = ref(false)
-const texto = ref('')
-const lista = ref<HTMLElement | null>(null)
-const mensajes = ref<Mensaje[]>([
-  {
-    id: siguienteId++,
-    autor: 'bot',
-    texto: '¡Hola! Soy el asistente de iPaletitas. ¿En qué te puedo ayudar hoy?',
-  },
-])
+const lanzador = ref<HTMLButtonElement | null>(null)
 
-const sugerencias = ['¿Qué incluye?', 'Planes y sucursales', '¿Funciona en celular?', 'Crear cuenta']
-
-const respuestas: { claves: string[]; texto: string }[] = [
-  {
-    claves: ['incluye', 'hace', 'funcion', 'módulo', 'modulo'],
-    texto:
-      'Administras productos, registras compras o entradas, cobras con ticket, consultas el historial de ventas y controlas usuarios y accesos.',
-  },
-  {
-    claves: ['plan', 'precio', 'sucursal', 'negocio'],
-    texto:
-      'Puedes manejar uno o varios negocios o sucursales, según el plan que contrates. Muy pronto verás los planes aquí mismo.',
-  },
-  {
-    claves: ['celular', 'teléfono', 'telefono', 'tablet', 'móvil', 'movil', 'computadora'],
-    texto:
-      'Sí. Es una plataforma web: entras desde computadora, tablet o teléfono, con tus datos en la nube y opción de trabajar en local.',
-  },
-  {
-    claves: ['ticket', 'venta', 'comprobante'],
-    texto: 'Al cerrar una venta se genera el ticket o comprobante al momento, y queda guardado en tu historial.',
-  },
-  {
-    claves: ['banco', 'contabilidad', 'marketing', 'cliente', 'migra'],
-    texto:
-      'Eso queda fuera del alcance: no nos integramos con bancos, no llevamos contabilidad completa ni administramos clientes o campañas de marketing.',
-  },
-]
-
-function responder(pregunta: string) {
-  const p = pregunta.toLowerCase()
-  const encontrada = respuestas.find((r) => r.claves.some((clave) => p.includes(clave)))
-  return (
-    encontrada?.texto ??
-    'Buena pregunta. Por ahora soy un asistente de demostración; pronto podrás hablar directamente con el equipo de iPaletitas.'
-  )
+async function alternar() {
+  abierto.value = !abierto.value
+  mostrarAviso.value = false
+  if (!abierto.value) {
+    await nextTick()
+    lanzador.value?.focus()
+  }
 }
 
-async function bajar() {
-  await nextTick()
-  lista.value?.scrollTo({ top: lista.value.scrollHeight, behavior: 'smooth' })
-}
-
-function enviar(contenido = texto.value) {
-  const limpio = contenido.trim()
-  if (!limpio || escribiendo.value) return
-
-  if (limpio === 'Crear cuenta') {
+function alAccion(accion: Accion) {
+  if (accion === 'registro') {
     emit('irRegistro')
     return
   }
-
-  mensajes.value.push({ id: siguienteId++, autor: 'usuario', texto: limpio })
-  texto.value = ''
-  escribiendo.value = true
-  bajar()
-
-  setTimeout(() => {
-    mensajes.value.push({ id: siguienteId++, autor: 'bot', texto: responder(limpio) })
-    escribiendo.value = false
-    bajar()
-  }, 800)
+  if (accion === 'planes') {
+    const quieto = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    document.getElementById('planes')?.scrollIntoView({ behavior: quieto ? 'auto' : 'smooth' })
+    // En teléfono la ventana taparía los planes.
+    if (window.matchMedia('(max-width: 639px)').matches) abierto.value = false
+  }
 }
 
-function alternar() {
-  abierto.value = !abierto.value
-  mostrarAviso.value = false
-  if (abierto.value) bajar()
+function alPresionarTecla(evento: KeyboardEvent) {
+  if (evento.key === 'Escape' && abierto.value) alternar()
+}
+
+// El aviso sale una sola vez, cuando ya dejaste atrás la portada, y se va solo.
+function alBajar() {
+  if (window.scrollY < window.innerHeight * 0.8) return
+  window.removeEventListener('scroll', alBajar)
+  avisoTimer = setTimeout(() => {
+    if (abierto.value) return
+    mostrarAviso.value = true
+    ocultarAvisoTimer = setTimeout(() => (mostrarAviso.value = false), 9000)
+  }, 1200)
 }
 
 onMounted(() => {
-  avisoTimer = setTimeout(() => {
-    if (!abierto.value) mostrarAviso.value = true
-  }, 2500)
+  window.addEventListener('scroll', alBajar, { passive: true })
+  window.addEventListener('keydown', alPresionarTecla)
 })
 
-onBeforeUnmount(() => clearTimeout(avisoTimer))
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', alBajar)
+  window.removeEventListener('keydown', alPresionarTecla)
+  clearTimeout(avisoTimer)
+  clearTimeout(ocultarAvisoTimer)
+})
 </script>
 
 <template>
-  <div class="fixed right-5 bottom-5 z-50 flex flex-col items-end gap-3 sm:right-8 sm:bottom-8">
+  <div class="chat-dock">
     <Transition name="chat">
-      <section
-        v-if="abierto"
-        class="flex w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl shadow-blue-900/20"
-        aria-label="Asistente iPaletitas"
-      >
-        <header class="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-4 text-white">
-          <span class="grid size-10 place-items-center rounded-2xl bg-white/15">
-            <PaletaIcon variant="white" :size="26" />
-          </span>
-          <div class="flex-1">
-            <p class="font-bold leading-tight">Asistente iPaletitas</p>
-            <p class="flex items-center gap-1.5 text-xs text-blue-100">
-              <span class="size-1.5 rounded-full bg-emerald-300" />
-              En línea
-            </p>
+      <section v-if="abierto" class="chat-ventana" role="dialog" aria-label="Asistente iPaletitas">
+        <header class="chat-cabeza">
+          <PaletaIcon variant="white" :size="28" />
+          <div class="min-w-0 flex-1">
+            <p class="font-display text-base leading-tight font-bold">Asistente iPaletitas</p>
+            <p class="text-sm text-blue-100">Responde al momento</p>
           </div>
-          <button type="button" class="chat-icon-btn" aria-label="Cerrar chat" @click="alternar">
+          <button type="button" class="chat-cerrar ip-boton" aria-label="Cerrar chat" @click="alternar">
             <X class="size-5" />
           </button>
         </header>
 
-        <div ref="lista" class="flex h-80 flex-col gap-3 overflow-y-auto bg-slate-50 px-4 py-5">
-          <div
-            v-for="m in mensajes"
-            :key="m.id"
-            :class="['flex items-end gap-2', m.autor === 'usuario' ? 'justify-end' : 'justify-start']"
-          >
-            <PaletaIcon v-if="m.autor === 'bot'" variant="blue" :size="22" class="shrink-0" />
-            <p
-              :class="[
-                'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-6',
-                m.autor === 'usuario'
-                  ? 'rounded-br-md bg-blue-600 text-white'
-                  : 'rounded-bl-md bg-white text-slate-700 ring-1 ring-slate-200',
-              ]"
-            >
-              {{ m.texto }}
-            </p>
-          </div>
-
-          <div v-if="escribiendo" class="flex items-end gap-2">
-            <PaletaIcon variant="blue" :size="22" class="shrink-0" />
-            <span class="typing flex gap-1 rounded-2xl rounded-bl-md bg-white px-4 py-3 ring-1 ring-slate-200">
-              <i /><i /><i />
-            </span>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 border-t border-slate-100 bg-white px-4 pt-3">
-          <button v-for="s in sugerencias" :key="s" type="button" class="chat-chip" @click="enviar(s)">
-            {{ s }}
-          </button>
-        </div>
-
-        <form class="flex items-center gap-2 bg-white p-4" @submit.prevent="enviar()">
-          <input
-            v-model="texto"
-            class="chat-input"
-            type="text"
-            placeholder="Escribe tu pregunta..."
-            aria-label="Mensaje"
-          />
-          <button type="submit" class="chat-send" aria-label="Enviar" :disabled="!texto.trim()">
-            <Send class="size-4" />
-          </button>
-        </form>
+        <Conversacion contexto="publico" enfocar @accion="alAccion" />
       </section>
     </Transition>
 
-    <Transition name="chat">
-      <button v-if="mostrarAviso && !abierto" type="button" class="chat-teaser" @click="alternar">
-        <PaletaIcon variant="gold" :size="20" />
+    <Transition name="aviso">
+      <button v-if="mostrarAviso && !abierto" type="button" class="chat-teaser ip-boton" @click="alternar">
+        <PaletaIcon variant="blue" :size="20" />
         ¿Te ayudo a conocer iPaletitas?
       </button>
     </Transition>
 
     <button
+      ref="lanzador"
       type="button"
-      class="chat-launcher"
+      class="chat-launcher ip-boton"
       :aria-label="abierto ? 'Cerrar chat' : 'Abrir chat'"
+      :aria-expanded="abierto"
       @click="alternar"
     >
       <X v-if="abierto" class="size-6" />
       <MessageCircle v-else class="size-6" />
-      <span v-if="!abierto" class="launcher-dot" />
     </button>
   </div>
 </template>
 
 <style scoped>
-button,
-input {
+button {
   font: inherit;
 }
 
-.chat-icon-btn {
+.chat-dock {
+  position: fixed;
+  right: max(1.25rem, env(safe-area-inset-right));
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .chat-dock {
+    right: max(2rem, env(safe-area-inset-right));
+    bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* La ventana flota sobre la página: es la única pieza con sombra. */
+.chat-ventana {
+  display: flex;
+  flex-direction: column;
+  width: min(24rem, calc(100vw - 2.5rem));
+  overflow: hidden;
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 24px 48px -16px rgb(15 23 42 / 0.35); /* taste-skill-ignore: ventana flotante */
+  transform-origin: bottom right;
+}
+
+.chat-cabeza {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1rem 1rem 1.25rem;
+  background: var(--marca-600);
+  color: #fff;
+}
+
+.chat-cerrar {
   display: grid;
   place-items: center;
-  padding: 6px;
+  width: 2.75rem;
+  height: 2.75rem;
   border: 0;
-  border-radius: 10px;
+  border-radius: 0.75rem;
   background: transparent;
   color: #fff;
   cursor: pointer;
 }
 
-.chat-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.chat-chip {
-  padding: 6px 12px;
-  border: 1px solid #dbeafe;
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.chat-chip:hover {
-  background: #dbeafe;
-}
-
-.chat-input {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-  padding: 12px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #f8fafc;
-  font-size: 0.9rem;
-}
-
-.chat-send {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  color: #fff;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
-
-.chat-send:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
+/* En teléfono el globo taparía el contenido; ahí basta el botón redondo. */
 .chat-teaser {
-  display: flex;
+  display: none;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 1rem;
+  border: 2px solid var(--marca-600);
+  border-radius: 0.75rem;
   background: #fff;
-  box-shadow: 0 12px 30px -10px rgba(30, 64, 175, 0.35);
-  color: #334155;
-  font-size: 0.875rem;
+  color: #0f172a;
+  font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
 }
 
+@media (min-width: 640px) {
+  .chat-teaser {
+    display: flex;
+  }
+}
+
+/* Sin sombra: el anillo claro lo separa de cualquier sección, incluso de las azules. */
 .chat-launcher {
-  position: relative;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 3.75rem;
+  height: 3.75rem;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 14px 30px -8px rgba(37, 99, 235, 0.6);
+  outline: 3px solid #fff;
+  background: var(--marca-600);
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s ease;
 }
 
-.chat-launcher:hover {
-  transform: scale(1.06);
+.chat-cerrar:focus-visible,
+.chat-teaser:focus-visible {
+  outline: 3px solid var(--marca-400);
+  outline-offset: 2px;
 }
 
-.launcher-dot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 14px;
-  height: 14px;
-  border: 2px solid #fff;
-  border-radius: 999px;
-  background: #fcd34d;
-  animation: latido 1.8s ease-in-out infinite;
+.chat-launcher:focus-visible {
+  outline-color: var(--marca-300);
+  outline-offset: 2px;
 }
 
-.typing i {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #94a3b8;
-  animation: rebote 1s ease-in-out infinite;
+@media (hover: hover) and (pointer: fine) {
+  .chat-cerrar:hover {
+    background: rgb(255 255 255 / 0.15);
+  }
+
+  .chat-launcher:hover {
+    background: var(--marca-700);
+  }
+
+  .chat-teaser:hover {
+    background: var(--marca-50);
+  }
 }
 
-.typing i:nth-child(2) {
-  animation-delay: 0.15s;
+.chat-enter-active {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
 }
 
-.typing i:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.chat-enter-active,
 .chat-leave-active {
   transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
 }
 
 .chat-enter-from,
 .chat-leave-to {
   opacity: 0;
-  transform: translateY(12px) scale(0.98);
+  transform: translateY(8px) scale(0.96);
 }
 
-@keyframes latido {
-  50% {
-    transform: scale(1.2);
-  }
+.aviso-enter-active,
+.aviso-leave-active {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
 }
 
-@keyframes rebote {
-  50% {
-    transform: translateY(-4px);
-    opacity: 0.6;
-  }
+.aviso-enter-from,
+.aviso-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .launcher-dot,
-  .typing i {
-    animation: none;
+  .chat-enter-from,
+  .chat-leave-to,
+  .aviso-enter-from,
+  .aviso-leave-to {
+    transform: none;
   }
 }
 </style>

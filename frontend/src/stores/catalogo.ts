@@ -15,7 +15,56 @@ export interface Plan {
   incluye: string[]
 }
 
+/** Prueba de las cuentas creadas antes de que la suscripción se pagara al contratar. */
 export const DIAS_PRUEBA = 14
+
+/** Semana gratis: días después del primer pago en los que el cliente puede pedir la devolución completa. */
+export const DIAS_GARANTIA = 7
+
+/** Días que el cliente sigue entrando después de que vence su licencia (o su prueba) para pagarla. */
+export const DIAS_COBRO = 3
+
+/** Los precios de los planes ya incluyen este IVA; el resumen del pago lo desglosa. */
+export const IVA = 0.16
+
+/** Plazos a meses sin intereses con tarjeta de crédito, solo en planes anuales. */
+export const MESES_SIN_INTERESES = [3, 6, 12] as const
+
+/** Cupones vigentes: descuentan un porcentaje del primer pago; las renovaciones van a precio normal. */
+export const CUPONES: Record<string, { porcentaje: number; descripcion: string }> = {
+  PALETA10: { porcentaje: 10, descripcion: '10% en tu primer pago' },
+  BIENVENIDA15: { porcentaje: 15, descripcion: '15% de bienvenida en tu primer pago' },
+}
+
+const DIA = 86_400_000
+
+/** vigente: dentro de su periodo · cobro: venció y corre el plazo para pagar · suspendida: sin acceso. */
+export type FaseLicencia = 'vigente' | 'cobro' | 'suspendida'
+
+export function finDeCobro(vence: string) {
+  return new Date(new Date(vence).getTime() + DIAS_COBRO * DIA).toISOString()
+}
+
+export function faseLicencia(licencia: { vence: string; suspendida?: boolean }, ahora = Date.now()): FaseLicencia {
+  if (licencia.suspendida) return 'suspendida'
+  if (ahora <= new Date(licencia.vence).getTime()) return 'vigente'
+  return ahora < new Date(finDeCobro(licencia.vence)).getTime() ? 'cobro' : 'suspendida'
+}
+
+/** Días completos o parciales que le quedan para pagar antes de la suspensión. */
+export function diasParaPagar(vence: string, ahora = Date.now()) {
+  return Math.max(0, Math.ceil((new Date(finDeCobro(vence)).getTime() - ahora) / DIA))
+}
+
+/**
+ * Nueva fecha de vencimiento al pagar un periodo. Si paga a tiempo (antes de vencer o dentro del
+ * plazo de cobro) el periodo corre desde su vencimiento; si ya estaba suspendida, desde hoy.
+ */
+export function renovarVencimiento(vence: string, ciclo: CicloPago, ahora = Date.now()) {
+  const desde = new Date(ahora >= new Date(finDeCobro(vence)).getTime() ? ahora : new Date(vence).getTime())
+  desde.setMonth(desde.getMonth() + (ciclo === 'anual' ? 12 : 1))
+  return desde.toISOString()
+}
 
 export const PLANES: Plan[] = [
   {

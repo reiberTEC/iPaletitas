@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Eye, EyeOff } from '@lucide/vue'
+import PortadaAcceso from './acceso/PortadaAcceso.vue'
+import paliSaludando from '@/assets/Img/pali-saludando.webp'
 import { DOMINIO_ADMIN, esCorreoAdmin } from '@/stores/admin'
+import { validarIngreso } from '@/stores/negocio'
 
 const email = ref('')
 const password = ref('')
@@ -20,6 +24,11 @@ const handleLogin = () => {
     error.value = `Esta cuenta no tiene permisos de administrador. Usa un correo ${DOMINIO_ADMIN}.`
     return
   }
+  const sinAcceso = comoAdmin.value ? null : validarIngreso(email.value)
+  if (sinAcceso) {
+    error.value = sinAcceso
+    return
+  }
   error.value = ''
   emit('ingresar', email.value, comoAdmin.value)
 }
@@ -27,48 +36,53 @@ const handleLogin = () => {
 
 <template>
   <div class="login-container">
-    
-    <!-- PANEL IZQUIERDO -->
-    <div class="left-panel">
-      <div class="brand">
-        <svg class="logo-icon paleta-animada" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10.5 17H13.5V21C13.5 21.5523 13.0523 22 12.5 22H11.5C10.9477 22 10.5 21.5523 10.5 21V17Z" fill="#FCD34D"/>
-          <path d="M7 8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8V16C17 16.5523 16.5523 17 16 17H8C7.44772 17 7 16.5523 7 16V8Z" fill="white" fill-opacity="0.2"/>
-          <path d="M8 8C8 5.79086 9.79086 4 12 4C14.2091 4 16 5.79086 16 8V16C16 16.5523 15.5523 17 15 17H9C8.44772 17 8 16.5523 8 16V8Z" fill="white"/>
-          <rect x="10.5" y="6" width="3" height="8" rx="1.5" fill="#2563EB" fill-opacity="0.1"/>
-        </svg>
-        <h1>iPaletitas</h1>
-      </div>
-    </div>
+    <PortadaAcceso
+      frase="Tu caja te está esperando."
+      :mascota="paliSaludando"
+      mascota-alt="Pali, la paleta de iPaletitas, saludando"
+      @ir-home="emit('irHome')"
+    />
 
-    <!-- PANEL DERECHO -->
-    <div class="right-panel">
+    <main class="right-panel">
       <div class="form-wrapper">
-        
-        <!-- Título modificado con la paletita extra -->
-        <h2 class="title" style="display: flex; justify-content: center; align-items: center; gap: 8px;">
-          ¡Bienvenido a iPaletitas!
-          <svg class="logo-icon paleta-animada" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10.5 17H13.5V21C13.5 21.5523 13.0523 22 12.5 22H11.5C10.9477 22 10.5 21.5523 10.5 21V17Z" fill="#FCD34D"/>
-            <path d="M7 8C7 5.23858 9.23858 3 12 3C14.7614 3 17 5.23858 17 8V16C17 16.5523 16.5523 17 16 17H8C7.44772 17 7 16.5523 7 16V8Z" fill="#2563EB" fill-opacity="0.1"/>
-            <path d="M8 8C8 5.79086 9.79086 4 12 4C14.2091 4 16 5.79086 16 8V16C16 16.5523 15.5523 17 15 17H9C8.44772 17 8 16.5523 8 16V8Z" fill="#2563EB"/>
-          </svg>
-        </h2>
-        <p class="subtitle">Ingresa a tu cuenta para continuar.</p>
+        <h1 class="title">Entra a tu cuenta</h1>
+        <p class="subtitle">Tus productos, tus ventas y tus sucursales, donde los dejaste.</p>
 
-        <form @submit.prevent="handleLogin" class="login-form">
+        <form class="login-form" @submit.prevent="handleLogin">
           <div class="input-group">
             <label for="email">Correo electrónico</label>
-            <input id="email" v-model="email" type="email" placeholder="ejemplo@correo.com" required />
+            <input
+              id="email"
+              v-model="email"
+              type="email"
+              autocomplete="email"
+              inputmode="email"
+              placeholder="ejemplo@correo.com"
+              required
+              @input="error = ''"
+            />
           </div>
 
           <div class="input-group">
             <label for="password">Contraseña</label>
             <div class="password-input-wrapper">
-              <input id="password" v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="••••••••" required />
-              <button type="button" class="btn-eye" @click="togglePassword">
-                <svg v-if="!showPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+              <input
+                id="password"
+                v-model="password"
+                :type="showPassword ? 'text' : 'password'"
+                autocomplete="current-password"
+                placeholder="Tu contraseña"
+                required
+              />
+              <button
+                type="button"
+                class="btn-eye"
+                :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                :aria-pressed="showPassword"
+                @click="togglePassword"
+              >
+                <EyeOff v-if="showPassword" class="size-5" />
+                <Eye v-else class="size-5" />
               </button>
             </div>
           </div>
@@ -83,16 +97,19 @@ const handleLogin = () => {
 
           <p v-if="error" class="login-error" role="alert">{{ error }}</p>
 
-          <button type="submit" class="btn-primary">{{ comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}</button>
+          <button type="submit" class="btn-primary ip-boton">
+            {{ comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}
+          </button>
         </form>
 
         <div class="links">
-          <a href="#" class="link-forgot">Recordar contraseña</a>
-          <!-- Aquí conectamos el evento para ir a crear cuenta -->
-          <p class="link-register">¿Todavía no tienes una cuenta? <a href="#" @click.prevent="$emit('irRegistro')">Regístrate</a></p>
+          <a href="#" class="link-forgot" @click.prevent>¿Olvidaste tu contraseña?</a>
+          <p class="link-register">
+            ¿Todavía no tienes cuenta? <a href="#" @click.prevent="$emit('irRegistro')">Créala gratis</a>
+          </p>
         </div>
       </div>
-    </div>
+    </main>
   </div>
 </template>
 
@@ -102,59 +119,61 @@ const handleLogin = () => {
 .admin-opcion {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f9fafb;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #d9dee6;
+  border-radius: 0.75rem;
+  background: #fff;
   cursor: pointer;
   transition:
-    border-color 0.2s,
-    background-color 0.2s;
-}
-
-.admin-opcion:hover {
-  border-color: #bfdbfe;
+    border-color 160ms var(--ease-out),
+    background-color 160ms var(--ease-out);
 }
 
 .admin-opcion--activa {
-  border-color: #2563eb;
-  background: #eff6ff;
+  border-color: var(--marca-600);
+  background: var(--marca-50);
 }
 
 .admin-opcion input {
-  width: 18px;
-  height: 18px;
+  width: 1.25rem;
+  height: 1.25rem;
   flex-shrink: 0;
   margin: 0;
   padding: 0;
-  accent-color: #2563eb;
+  accent-color: var(--marca-600);
   cursor: pointer;
 }
 
 .admin-texto {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  text-align: left;
+  gap: 0.125rem;
 }
 
 .admin-texto strong {
-  color: #1f2937;
-  font-size: 0.9rem;
+  color: #0f172a;
+  font-size: 1rem;
 }
 
 .admin-texto small {
-  color: #6b7280;
-  font-size: 0.78rem;
+  color: #475569;
+  font-size: 0.875rem;
 }
 
 .login-error {
   margin: 0;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  border-radius: 0.625rem;
   background: #fef2f2;
   color: #b91c1c;
-  font-size: 0.85rem;
+  font-size: 0.9375rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admin-opcion:not(.admin-opcion--activa):hover {
+    border-color: var(--marca-300);
+  }
 }
 </style>

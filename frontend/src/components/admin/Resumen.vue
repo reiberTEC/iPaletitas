@@ -6,7 +6,7 @@ import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
 import EstadoBadge from './EstadoBadge.vue'
 import type { SeccionAdmin } from './secciones'
-import { diasPara, estado, metricas, type EstadoCuenta } from '@/stores/admin'
+import { diasPara, estado, metricas, porCobrar, type EstadoCuenta } from '@/stores/admin'
 import { dinero, fechaYHora } from '@/lib/formato'
 
 defineEmits<{ ir: [seccion: SeccionAdmin]; verCuenta: [id: string] }>()
@@ -28,7 +28,7 @@ const kpis = computed(() => [
   },
   {
     titulo: 'En prueba gratis',
-    valor: String(metricas.value.porEstado.Prueba),
+    valor: String(metricas.value.porEstado['En prueba']),
     detalle: `${dinero(metricas.value.potencial)} / mes potenciales`,
     icono: Sparkles,
     color: 'bg-amber-300/30 text-amber-700',
@@ -36,7 +36,7 @@ const kpis = computed(() => [
   {
     titulo: 'Por cobrar',
     valor: dinero(metricas.value.porCobrar),
-    detalle: `${metricas.value.vencidos} pagos vencidos`,
+    detalle: `${metricas.value.porEstado['En periodo de cobro']} en periodo de cobro · ${metricas.value.vencidos} vencidos`,
     icono: HandCoins,
     color: 'bg-rose-500/10 text-rose-600',
   },
@@ -44,9 +44,10 @@ const kpis = computed(() => [
 
 const colorEstado: Record<EstadoCuenta, string> = {
   Activa: 'bg-emerald-500',
-  Prueba: 'bg-blue-500',
-  Vencida: 'bg-amber-400',
+  'En prueba': 'bg-blue-500',
+  'En periodo de cobro': 'bg-amber-400',
   Suspendida: 'bg-rose-500',
+  Cancelada: 'bg-slate-400',
 }
 
 const distribucion = computed(() =>
@@ -167,7 +168,7 @@ const maxPlan = computed(() => Math.max(1, ...metricas.value.porPlan.map((p) => 
         </div>
         <ul class="mt-4 list-none space-y-2 p-0">
           <li
-            v-for="pago in estado.pagos.filter((p) => p.estado !== 'Pagado').slice(0, 5)"
+            v-for="pago in estado.pagos.filter(porCobrar).slice(0, 5)"
             :key="pago.id"
             class="flex items-center gap-3 rounded-xl bg-slate-50 p-3"
           >
@@ -178,7 +179,7 @@ const maxPlan = computed(() => Math.max(1, ...metricas.value.porPlan.map((p) => 
             <EstadoBadge :estado="pago.estado" />
             <span class="w-24 text-right text-sm font-bold">{{ dinero(pago.monto) }}</span>
           </li>
-          <li v-if="!estado.pagos.some((p) => p.estado !== 'Pagado')" class="py-6 text-center text-sm text-slate-400">
+          <li v-if="!estado.pagos.some(porCobrar)" class="py-6 text-center text-sm text-slate-400">
             Todo está cobrado.
           </li>
         </ul>

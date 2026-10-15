@@ -7,6 +7,7 @@ import {
   ACCIONES,
   MODULOS,
   clavePermiso,
+  esSesionActual,
   esTitular,
   nombreSucursal,
   type AccionId,
@@ -15,7 +16,7 @@ import {
 } from '@/stores/negocio'
 import { fechaDia, iniciales } from '@/lib/formato'
 
-const props = defineProps<{ usuario: Usuario }>()
+const props = withDefaults(defineProps<{ usuario: Usuario; editable?: boolean }>(), { editable: true })
 const emit = defineEmits<{ cerrar: []; editar: []; permisos: [] }>()
 
 const tiene = (modulo: ModuloId, accion: AccionId) => props.usuario.permisos.includes(clavePermiso(modulo, accion))
@@ -35,11 +36,14 @@ const tiene = (modulo: ModuloId, accion: AccionId) => props.usuario.permisos.inc
       <div class="min-w-0">
         <h3 class="truncate text-xl font-extrabold text-slate-900">
           {{ usuario.nombre }}
-          <span v-if="esTitular(usuario)" class="text-sm font-semibold text-blue-600">(tú)</span>
+          <span v-if="esSesionActual(usuario)" class="text-sm font-semibold text-blue-600">(tú)</span>
         </h3>
         <p class="text-sm text-slate-500">{{ usuario.puesto }}</p>
         <div class="mt-2 flex flex-wrap gap-2">
           <span :class="['rounded-full px-2.5 py-0.5 text-xs font-bold', estiloRol[usuario.rol].etiqueta]">{{ usuario.rol }}</span>
+          <span v-if="esTitular(usuario)" class="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-800">
+            Titular de la cuenta
+          </span>
           <span
             :class="[
               'rounded-full px-2.5 py-0.5 text-xs font-bold',
@@ -94,11 +98,11 @@ const tiene = (modulo: ModuloId, accion: AccionId) => props.usuario.permisos.inc
 
     <div class="mt-6 flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-5">
       <UiButton variant="outline" @click="emit('cerrar')">Cerrar</UiButton>
-      <UiButton variant="outline" @click="emit('permisos')">
+      <UiButton v-if="editable" variant="outline" @click="emit('permisos')">
         <ShieldCheck class="size-4" />
         Rol y permisos
       </UiButton>
-      <UiButton @click="emit('editar')">
+      <UiButton v-if="editable" @click="emit('editar')">
         <Pencil class="size-4" />
         Editar
       </UiButton>

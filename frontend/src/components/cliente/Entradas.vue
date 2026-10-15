@@ -4,7 +4,7 @@ import { CircleCheck, PackagePlus, Truck, Wallet } from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
-import { estado, registrarEntrada, stock, sucursalActiva } from '@/stores/negocio'
+import { estado, puede, registrarEntrada, stock, sucursalActiva } from '@/stores/negocio'
 import { dinero, fechaYHora } from '@/lib/formato'
 
 const form = reactive({
@@ -48,35 +48,42 @@ function registrar() {
 
 <template>
   <div>
-    <Encabezado titulo="Entradas de productos" :descripcion="`Registra la mercancía que llega a ${sucursalActiva?.nombre}.`" />
+    <Encabezado
+      titulo="Entradas de productos"
+      :descripcion="
+        puede('entradas.crear')
+          ? `Registra la mercancía que llega a ${sucursalActiva?.nombre}.`
+          : `Consulta la mercancía que ha llegado a ${sucursalActiva?.nombre}.`
+      "
+    />
 
-    <div class="mb-6 grid gap-5 sm:grid-cols-3">
-      <UiCard class="flex items-center gap-4 p-5">
-        <span class="grid size-11 place-items-center rounded-xl bg-blue-600/10 text-blue-600"><PackagePlus class="size-5" /></span>
-        <div>
+    <div class="ip-tira mb-6 sm:grid-cols-3">
+      <div class="flex items-center gap-4 p-5">
+        <span class="ip-picto size-10"><PackagePlus class="size-5" /></span>
+        <div class="min-w-0">
           <p class="text-sm text-slate-500">Entradas este mes</p>
-          <p class="text-2xl font-extrabold">{{ delMes.length }}</p>
+          <p class="ip-cifra text-2xl text-slate-900">{{ delMes.length.toLocaleString('es-MX') }}</p>
         </div>
-      </UiCard>
-      <UiCard class="flex items-center gap-4 p-5">
-        <span class="grid size-11 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600"><Truck class="size-5" /></span>
-        <div>
+      </div>
+      <div class="flex items-center gap-4 p-5">
+        <span class="ip-picto size-10"><Truck class="size-5" /></span>
+        <div class="min-w-0">
           <p class="text-sm text-slate-500">Piezas recibidas</p>
-          <p class="text-2xl font-extrabold">{{ unidades }}</p>
+          <p class="ip-cifra text-2xl text-slate-900">{{ unidades.toLocaleString('es-MX') }}</p>
         </div>
-      </UiCard>
-      <UiCard class="flex items-center gap-4 p-5">
-        <span class="grid size-11 place-items-center rounded-xl bg-amber-300/30 text-amber-700"><Wallet class="size-5" /></span>
-        <div>
+      </div>
+      <div class="flex items-center gap-4 p-5">
+        <span class="ip-picto size-10"><Wallet class="size-5" /></span>
+        <div class="min-w-0">
           <p class="text-sm text-slate-500">Inversión del mes</p>
-          <p class="text-2xl font-extrabold">{{ dinero(inversion) }}</p>
+          <p class="ip-cifra text-2xl text-slate-900">{{ dinero(inversion) }}</p>
         </div>
-      </UiCard>
+      </div>
     </div>
 
-    <div class="grid gap-6 lg:grid-cols-[380px_1fr]">
-      <UiCard class="h-fit bg-white p-6">
-        <h3 class="text-lg font-bold">Nueva entrada</h3>
+    <div :class="['grid gap-6', puede('entradas.crear') && 'lg:grid-cols-[380px_1fr]']">
+      <UiCard v-if="puede('entradas.crear')" class="h-fit bg-white p-6">
+        <h3 class="font-display text-lg font-semibold">Nueva entrada</h3>
         <p class="mb-5 text-sm text-slate-500">Suma piezas al inventario de esta sucursal.</p>
 
         <form class="space-y-4" @submit.prevent="registrar">
@@ -87,7 +94,7 @@ function registrar() {
             </select>
             <p v-if="seleccionado" class="mt-1.5 text-xs text-slate-500">
               Hoy tienes <strong>{{ stock(seleccionado) }}</strong> · quedarán
-              <strong class="text-emerald-600">{{ stock(seleccionado) + (form.cantidad || 0) }}</strong>
+              <strong class="text-emerald-700 tabular-nums">{{ stock(seleccionado) + (form.cantidad || 0) }}</strong>
             </p>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -113,11 +120,11 @@ function registrar() {
           </div>
           <p class="flex justify-between rounded-xl bg-slate-50 px-4 py-3 text-sm">
             <span class="text-slate-500">Total de la compra</span>
-            <strong>{{ dinero((form.cantidad || 0) * (form.costoUnitario || 0)) }}</strong>
+            <strong class="tabular-nums">{{ dinero((form.cantidad || 0) * (form.costoUnitario || 0)) }}</strong>
           </p>
           <UiButton type="submit" class="w-full" :disabled="!estado.productos.length">Registrar entrada</UiButton>
           <Transition name="aviso">
-            <p v-if="exito" class="flex items-center gap-2 text-sm font-semibold text-emerald-600">
+            <p v-if="exito" role="status" class="flex items-center gap-2 text-sm font-semibold text-emerald-700">
               <CircleCheck class="size-4" /> Entrada registrada y stock actualizado.
             </p>
           </Transition>
@@ -126,7 +133,7 @@ function registrar() {
 
       <UiCard class="overflow-hidden bg-white">
         <div class="p-6 pb-4">
-          <h3 class="text-lg font-bold">Historial de entradas</h3>
+          <h3 class="font-display text-lg font-semibold">Historial de entradas</h3>
         </div>
         <div class="overflow-x-auto">
           <table class="ip-table">
@@ -145,15 +152,15 @@ function registrar() {
                 <td class="font-bold text-slate-900">E-{{ String(entrada.folio).padStart(4, '0') }}</td>
                 <td class="whitespace-nowrap">{{ fechaYHora(entrada.fecha) }}</td>
                 <td>
-                  <p class="font-semibold text-slate-900">{{ entrada.producto }}</p>
-                  <p v-if="entrada.nota" class="text-xs text-slate-400">{{ entrada.nota }}</p>
+                  <p class="max-w-56 font-semibold [overflow-wrap:anywhere] text-slate-900">{{ entrada.producto }}</p>
+                  <p v-if="entrada.nota" class="max-w-56 truncate text-xs text-slate-500" :title="entrada.nota">{{ entrada.nota }}</p>
                 </td>
-                <td>{{ entrada.proveedor }}</td>
-                <td class="text-right font-semibold text-emerald-600">+{{ entrada.cantidad }}</td>
-                <td class="text-right">{{ dinero(entrada.cantidad * entrada.costoUnitario) }}</td>
+                <td><span class="block max-w-40 truncate" :title="entrada.proveedor">{{ entrada.proveedor }}</span></td>
+                <td class="text-right font-semibold text-emerald-700 tabular-nums">+{{ entrada.cantidad.toLocaleString('es-MX') }}</td>
+                <td class="text-right whitespace-nowrap tabular-nums">{{ dinero(entrada.cantidad * entrada.costoUnitario) }}</td>
               </tr>
               <tr v-if="!entradas.length">
-                <td colspan="6" class="py-14 text-center text-slate-400">
+                <td colspan="6" class="py-14 text-center text-slate-500">
                   Todavía no registras entradas en esta sucursal.
                 </td>
               </tr>
@@ -164,15 +171,3 @@ function registrar() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.aviso-enter-active,
-.aviso-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.aviso-enter-from,
-.aviso-leave-to {
-  opacity: 0;
-}
-</style>

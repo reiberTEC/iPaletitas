@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Ban, CalendarPlus, CircleCheck, CirclePlay, Mail, MapPin, Phone, RefreshCw } from '@lucide/vue'
+import { ArrowRightLeft, Ban, CalendarPlus, CircleCheck, Mail, MapPin, Phone, RefreshCw } from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import UiModal from '../ui/Modal.vue'
 import EstadoBadge from './EstadoBadge.vue'
-import { PLANES, PLAN_RECOMENDADO, planPorId, type CicloPago, type Limite, type PlanId } from '@/stores/catalogo'
+import ModalPago from './ModalPago.vue'
+import { PLANES, PLAN_RECOMENDADO, finDeCobro, planPorId, type CicloPago, type Limite, type PlanId } from '@/stores/catalogo'
 import {
-  activarSuscripcion,
   buscarCuenta,
   cambiarPlanCuenta,
+  cargoPorCobrar,
   diasPara,
   estadoDe,
   extenderPrueba,
@@ -16,17 +17,37 @@ import {
   pagosDe,
   reactivarCuenta,
   regenerarClave,
+  registrarPagoCuenta,
+  suspendidaPorFaltaDePago,
   suspenderCuenta,
+  vencimientoAlPagar,
 } from '@/stores/admin'
-import { dinero, fecha, fechaYHora, iniciales } from '@/lib/formato'
+import { dinero, fecha, fechaYHora, iniciales, plural } from '@/lib/formato'
 
 const props = defineProps<{ id: string }>()
-defineEmits(['cerrar'])
+const emit = defineEmits(['cerrar'])
 
 const cuenta = computed(() => buscarCuenta(props.id))
 const estadoCuenta = computed(() => (cuenta.value ? estadoDe(cuenta.value) : 'Activa'))
 const plan = computed(() => planPorId(cuenta.value?.planId ?? 'basica'))
 const pagos = computed(() => pagosDe(props.id))
+const sinPago = computed(() => (cuenta.value ? suspendidaPorFaltaDePago(cuenta.value) : false))
+const suspensionCobro = computed(() => (cuenta.value ? finDeCobro(cuenta.value.vence) : ''))
+
+const cobrando = ref(false)
+const cargo = computed(() => (cobrando.value ? cargoPorCobrar(props.id) : null))
+
+function confirmarPago(referencia: string) {
+  cobrando.value = false
+  const vence = registrarPagoCuenta(props.id, referencia)
+  aviso.value = vence ? `Pago registrado · activa hasta el ${fecha(vence)}` : 'Pago registrado'
+  setTimeout(() => (aviso.value = ''), 3000)
+}
+
+// Escape también le llega a esta ventana: si la de pago está abierta, solo se cierra esa.
+function cerrar() {
+  if (!cobrando.value) emit('cerrar')
+}
 
 const planNuevo = ref<PlanId>(cuenta.value?.planId ?? PLAN_RECOMENDADO)
 const cicloNuevo = ref<CicloPago>(cuenta.value?.ciclo ?? 'mensual')
@@ -71,7 +92,7 @@ function suspender() {
 </script>
 
 <template>
-  <UiModal v-if="cuenta" :titulo="cuenta.negocio" ancho="max-w-4xl" @cerrar="$emit('cerrar')">
+  <UiModal v-if="cuenta" :titulo="cuenta.negocio" ancho="max-w-4xl" @cerrar="cerrar">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
       <span class="grid size-14 shrink-0 place-items-center rounded-2xl bg-amber-300 text-lg font-extrabold text-slate-900">
         {{ iniciales(cuenta.negocio) }}
@@ -121,7 +142,16 @@ function suspender() {
             Regenerar
           </UiButton>
         </div>
-        <p class="mt-4 text-sm text-slate-300">
+        <p v-if="estadoCuenta === 'En periodo de cobro'" class="mt-4 text-sm text-slate-300">
+          {{ cuenta.enPrueba ? 'Su prueba terminó' : 'Venció' }} el <strong class="text-white">{{ fecha(cuenta.vence) }}</strong>.
+          Si no paga, se suspende el <strong class="text-white">{{ fecha(suspensionCobro) }}</strong>{{ ' ' }}
+          <span class="text-slate-400">({{ plural(Math.max(1, diasPara(suspensionCobro)), 'día', 'días') }} para pagar)</span>.
+        </p>
+        <p v-else-if="sinPago" class="mt-4 text-sm text-slate-300">
+          Venció el <strong class="text-white">{{ fecha(cuenta.vence) }}</strong> y está suspendida por falta de pago desde el
+          <strong class="text-white">{{ fecha(suspensionCobro) }}</strong>.
+        </p>
+        <p v-else class="mt-4 text-sm text-slate-300">
           {{ cuenta.enPrueba ? 'La prueba termina' : 'Renueva' }} el <strong class="text-white">{{ fecha(cuenta.vence) }}</strong>{{ ' ' }}
           <span class="text-slate-400">({{ diasPara(cuenta.vence) >= 0 ? `faltan ${diasPara(cuenta.vence)} días` : `venció hace ${-diasPara(cuenta.vence)} días` }})</span>
         </p>
@@ -149,12 +179,9 @@ function suspender() {
     <section class="mt-5 rounded-2xl p-5 ring-1 ring-slate-200">
       <h3 class="text-sm font-bold tracking-wider text-slate-400 uppercase">Acciones</h3>
       <div class="mt-4 flex flex-wrap gap-3">
-        <UiButton
-          v-if="estadoCuenta === 'Prueba' || estadoCuenta === 'Vencida'"
-          @click="hecho('Suscripción activada y cargo emitido', () => activarSuscripcion(id))"
-        >
-          <CirclePlay class="size-4" />
-          Activar suscripción de pago
+        <UiButton @click="cobrando = true">
+          <ArrowRightLeft class="size-4" />
+          Registrar pago por transferencia
         </UiButton>
         <UiButton
           v-if="cuenta.enPrueba"
@@ -165,18 +192,29 @@ function suspender() {
           Extender prueba 7 días
         </UiButton>
         <UiButton
-          v-if="estadoCuenta === 'Suspendida'"
+          v-if="cuenta.suspendida"
           variant="secondary"
           @click="hecho('Cuenta reactivada', () => reactivarCuenta(id))"
         >
           <CircleCheck class="size-4" />
           Reactivar cuenta
         </UiButton>
-        <UiButton v-else variant="outline" class="text-rose-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700" @click="suspender">
+        <UiButton
+          v-else-if="!sinPago"
+          variant="outline"
+          class="text-rose-600 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+          @click="suspender"
+        >
           <Ban class="size-4" />
           Suspender cuenta
         </UiButton>
       </div>
+      <p v-if="sinPago" class="mt-3 text-sm text-slate-500">
+        Está suspendida por falta de pago: se reactiva en cuanto registres su transferencia.
+      </p>
+      <p v-else-if="cuenta.suspendida" class="mt-3 text-sm text-slate-500">
+        La suspendió un administrador. Registrar su pago también la reactiva.
+      </p>
 
       <div class="mt-5 grid gap-3 border-t border-slate-100 pt-5 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
         <div>
@@ -220,7 +258,12 @@ function suspender() {
               <td class="font-bold text-slate-900">F-{{ pago.folio }}</td>
               <td>{{ pago.concepto }}</td>
               <td class="whitespace-nowrap">{{ fecha(pago.emitido) }}</td>
-              <td><EstadoBadge :estado="pago.estado" /></td>
+              <td>
+                <EstadoBadge :estado="pago.estado" />
+                <p v-if="pago.estado !== 'Pendiente' && pago.estado !== 'Vencido' && pago.metodo" class="mt-1 text-xs [overflow-wrap:anywhere] text-slate-400">
+                  {{ pago.metodo }}<template v-if="pago.referencia"> · {{ pago.referencia }}</template>
+                </p>
+              </td>
               <td class="text-right font-semibold">{{ dinero(pago.monto) }}</td>
             </tr>
             <tr v-if="!pagos.length">
@@ -233,6 +276,14 @@ function suspender() {
       </div>
     </section>
   </UiModal>
+
+  <ModalPago
+    v-if="cuenta && cargo"
+    :cargo="cargo"
+    :vence-nuevo="vencimientoAlPagar(id)"
+    @confirmar="confirmarPago"
+    @cerrar="cobrando = false"
+  />
 </template>
 
 <style scoped>

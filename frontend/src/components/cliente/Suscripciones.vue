@@ -15,11 +15,13 @@ import {
   estado,
   excesosDelPlan,
   planActual,
+  plazoDeCobro,
   precioPlan,
+  puede,
   type CicloPago,
   type Plan,
 } from '@/stores/negocio'
-import { precio } from '@/lib/formato'
+import { plural, precio } from '@/lib/formato'
 
 const ciclo = ref<CicloPago>(estado.licencia?.ciclo ?? 'mensual')
 const seleccionado = ref<Plan | null>(null)
@@ -37,8 +39,18 @@ const excesos = computed(() => (seleccionado.value ? excesosDelPlan(seleccionado
 const aviso = ref('')
 let temporizador: ReturnType<typeof setTimeout> | undefined
 
+const puedeCambiar = computed(() => puede('licencia.editar'))
+
+const vigencia = computed(() => {
+  if (plazoDeCobro.value) return `pago pendiente, ${plural(plazoDeCobro.value.dias, 'día', 'días')} para pagar`
+  const dias = plural(diasRestantes.value, 'día', 'días')
+  return enPrueba.value
+    ? `prueba gratis, ${dias} ${diasRestantes.value === 1 ? 'restante' : 'restantes'}`
+    : `${dias} para renovar`
+})
+
 function confirmar() {
-  if (!seleccionado.value) return
+  if (!seleccionado.value || !puedeCambiar.value) return
   cambiarPlan(seleccionado.value.id, ciclo.value)
   aviso.value = `¡Listo! Ahora tienes el plan ${seleccionado.value.nombre}.`
   clearTimeout(temporizador)
@@ -53,10 +65,14 @@ onBeforeUnmount(() => clearTimeout(temporizador))
   <div>
     <Encabezado
       titulo="Suscripciones"
-      :descripcion="`Plan ${planActual?.nombre} · ${enPrueba ? `prueba gratis, ${diasRestantes} días restantes` : `${diasRestantes} días para renovar`}. Puedes cambiarlo cuando quieras.`"
+      :descripcion="`Plan ${planActual?.nombre} · ${vigencia}. ${puedeCambiar ? 'Puedes cambiarlo cuando quieras.' : ''}`"
     >
       <SelectorCiclo v-model="ciclo" />
     </Encabezado>
+
+    <p v-if="!puedeCambiar" class="rounded-2xl bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700">
+      Solo el administrador de la cuenta puede cambiar de plan. Aquí puedes consultar lo que incluye cada uno.
+    </p>
 
     <div class="grid grid-cols-1 gap-x-6 gap-y-[150px] pt-[120px] sm:grid-cols-2 2xl:grid-cols-4">
       <TarjetaPlan
@@ -65,13 +81,15 @@ onBeforeUnmount(() => clearTimeout(temporizador))
         :plan="plan"
         :ciclo="ciclo"
         :actual="esActual(plan)"
+        :solo-ver="!puedeCambiar"
         texto-boton="Cambiar a este plan"
         @elegir="seleccionado = $event"
       />
     </div>
 
     <p class="mt-8 text-center text-sm text-slate-500">
-      Precios en pesos mexicanos con IVA incluido. Sin plazos forzosos: cancela cuando quieras.
+      Precios en pesos mexicanos con IVA incluido. Las renovaciones se cobran solas a tu tarjeta. Sin plazos forzosos:
+      cancela cuando quieras.
     </p>
 
     <UiModal v-if="seleccionado" titulo="Cambiar de plan" @cerrar="seleccionado = null">
@@ -111,28 +129,7 @@ onBeforeUnmount(() => clearTimeout(temporizador))
     </UiModal>
 
     <Transition name="aviso">
-      <div
-        v-if="aviso"
-        role="status"
-        class="fixed right-6 bottom-6 z-[70] rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white shadow-2xl"
-      >
-        {{ aviso }}
-      </div>
+      <div v-if="aviso" role="status" class="ip-aviso">{{ aviso }}</div>
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.aviso-enter-active,
-.aviso-leave-active {
-  transition:
-    opacity 0.25s,
-    transform 0.25s;
-}
-
-.aviso-enter-from,
-.aviso-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-</style>

@@ -1,3 +1,5 @@
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/unbounded/index.css';
 @import './base.css' layer(base);
 @import 'tailwindcss/theme.css' layer(theme);
 @import 'tailwindcss/utilities.css' layer(utilities);
@@ -5,10 +7,47 @@
 @import './sistema.css';
 @import './oscuro-global.css';
 
+/*
+  Marca blanca: la escala "blue" de Tailwind es la línea de color del negocio.
+  lib/marca.ts reescribe --marca-* con la escala calculada a partir de su logo.
+*/
+:root {
+  --marca: #2456d6;
+  --marca-50: #f3f7ff;
+  --marca-100: #e2ecff;
+  --marca-200: #c7daff;
+  --marca-300: #9dbdff;
+  --marca-400: #6c9aff;
+  --marca-500: #3f75f8;
+  --marca-600: #295bdc;
+  --marca-700: #1c48bb;
+  --marca-800: #123797;
+  --marca-900: #0a2773;
+  --marca-950: #04164c;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 @theme {
-  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
-  --color-brand: #2563eb;
-  --color-brand-dark: #1d4ed8;
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Unbounded Variable', 'Archivo Variable', ui-sans-serif, sans-serif;
+
+  --color-blue-50: var(--marca-50);
+  --color-blue-100: var(--marca-100);
+  --color-blue-200: var(--marca-200);
+  --color-blue-300: var(--marca-300);
+  --color-blue-400: var(--marca-400);
+  --color-blue-500: var(--marca-500);
+  --color-blue-600: var(--marca-600);
+  --color-blue-700: var(--marca-700);
+  --color-blue-800: var(--marca-800);
+  --color-blue-900: var(--marca-900);
+  --color-blue-950: var(--marca-950);
+
+  --color-brand: var(--marca-600);
+  --color-brand-dark: var(--marca-700);
   --color-gold: #fcd34d;
 }
 
@@ -23,14 +62,61 @@ body,
 }
 
 #app {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 0;
 }
 
 html {
   scroll-behavior: smooth;
+  caret-color: var(--marca-600);
+  accent-color: var(--marca-600);
+  scrollbar-color: color-mix(in oklab, var(--marca-600) 35%, #cbd5e1) transparent;
+}
+
+::selection {
+  background: var(--marca-200);
+  color: var(--marca-950);
+}
+
+html.oscuro ::selection {
+  background: var(--marca-700);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--marca-500);
+  outline-offset: 2px;
 }
 
 a {
   text-decoration: none;
+  text-underline-offset: 0.2em;
+}
+
+table,
+.tabular-nums,
+.cifra {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

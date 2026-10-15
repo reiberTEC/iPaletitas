@@ -11,10 +11,12 @@ import {
   cambiarSucursal,
   crearSucursal,
   estado,
+  puede,
   puedeAgregar,
   resumenUso,
   stock,
   sucursalActiva,
+  sucursalFija,
   type Sucursal,
 } from '@/stores/negocio'
 import { dinero, mismoDia } from '@/lib/formato'
@@ -48,7 +50,7 @@ function guardar() {
 <template>
   <div>
     <Encabezado titulo="Sucursales" :descripcion="`${resumenUso('sucursales')} · cada sucursal lleva su propio inventario.`">
-      <UiButton :disabled="!puedeAgregar('sucursales')" @click="abrir">
+      <UiButton v-if="puede('sucursales.crear')" :disabled="!puedeAgregar('sucursales')" @click="abrir">
         <Plus class="size-4" />
         Nueva sucursal
       </UiButton>
@@ -63,27 +65,27 @@ function guardar() {
         :class="['flex flex-col bg-white p-6', sucursal.id === sucursalActiva?.id && 'ring-2 ring-blue-500']"
       >
         <div class="flex items-start justify-between gap-3">
-          <span class="grid size-12 place-items-center rounded-2xl bg-blue-600/10 text-blue-600">
-            <Store class="size-6" />
+          <span class="ip-picto size-11">
+            <Store class="size-5" />
           </span>
           <UiBadge v-if="sucursal.id === sucursalActiva?.id" variant="blue">Trabajando aquí</UiBadge>
         </div>
-        <h3 class="mt-4 text-lg font-bold">{{ sucursal.nombre }}</h3>
-        <p class="mt-1 flex items-center gap-1.5 text-sm text-slate-500">
-          <MapPin class="size-4 shrink-0" /> {{ sucursal.direccion }}
+        <h3 class="mt-4 font-display text-lg font-semibold [overflow-wrap:anywhere]">{{ sucursal.nombre }}</h3>
+        <p class="mt-1 flex items-start gap-1.5 text-sm [overflow-wrap:anywhere] text-slate-500">
+          <MapPin class="mt-0.5 size-4 shrink-0" /> {{ sucursal.direccion }}
         </p>
 
-        <dl class="mt-5 grid grid-cols-2 gap-3">
-          <div v-for="dato in resumen(sucursal)" :key="dato.etiqueta" class="rounded-xl bg-slate-50 p-3">
-            <dt class="text-xs text-slate-400">{{ dato.etiqueta }}</dt>
-            <dd class="m-0 mt-1 font-bold">{{ dato.valor }}</dd>
+        <dl class="mt-5 mb-5 grid grid-cols-2 gap-3">
+          <div v-for="dato in resumen(sucursal)" :key="dato.etiqueta" class="min-w-0 rounded-xl bg-slate-50 p-3">
+            <dt class="text-xs text-slate-500">{{ dato.etiqueta }}</dt>
+            <dd class="m-0 mt-1 truncate font-bold tabular-nums" :title="String(dato.valor)">{{ dato.valor }}</dd>
           </div>
         </dl>
 
         <UiButton
-          v-if="sucursal.id !== sucursalActiva?.id"
+          v-if="!sucursalFija && sucursal.id !== sucursalActiva?.id"
           variant="outline"
-          class="mt-5 w-full"
+          class="mt-auto w-full"
           @click="cambiarSucursal(sucursal.id)"
         >
           Trabajar en esta sucursal
@@ -91,9 +93,9 @@ function guardar() {
       </UiCard>
 
       <button
-        v-if="puedeAgregar('sucursales')"
+        v-if="puede('sucursales.crear') && puedeAgregar('sucursales')"
         type="button"
-        class="grid min-h-64 cursor-pointer place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-transparent p-6 text-slate-500 transition hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700"
+        class="grid min-h-64 cursor-pointer place-items-center rounded-2xl border-2 border-dashed border-slate-300 bg-transparent p-6 text-slate-500 transition-colors hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700"
         @click="abrir"
       >
         <span class="text-center">

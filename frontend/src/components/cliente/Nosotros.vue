@@ -51,13 +51,13 @@ const redes = [
   {
     nombre: 'Facebook',
     url: 'https://www.facebook.com/ipaletitas',
-    fondo: 'bg-[#1877f2]',
+    fondo: 'bg-[#0866ff]',
     path: 'M14 8h3V4h-3c-2.76 0-5 2.24-5 5v2H7v4h2v7h4v-7h3l1-4h-4V9c0-.55.45-1 1-1z',
   },
   {
     nombre: 'Instagram',
     url: 'https://www.instagram.com/ipaletitas',
-    fondo: 'bg-gradient-to-tr from-[#f58529] via-[#dd2a7b] to-[#8134af]',
+    fondo: 'bg-[#c13584]',
     path: '',
   },
   {
@@ -69,7 +69,7 @@ const redes = [
   {
     nombre: 'WhatsApp',
     url: 'https://wa.me/520000000000',
-    fondo: 'bg-[#22c55e]',
+    fondo: 'bg-[#075e54]',
     path: '',
   },
 ]
@@ -77,48 +77,46 @@ const redes = [
 
 <template>
   <div class="mx-auto flex max-w-6xl flex-col gap-7">
-    <section
-      class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-blue-500 p-8 text-white shadow-xl shadow-blue-600/25 sm:p-12"
-    >
+    <section class="relative overflow-hidden rounded-3xl bg-blue-600 p-8 text-white sm:p-12">
       <img
         :src="paliSaludando"
         alt=""
         aria-hidden="true"
         class="pointer-events-none absolute right-6 -bottom-2 hidden h-44 w-auto md:block"
       />
-      <p class="text-sm font-semibold tracking-[0.2em] text-blue-100 uppercase">Quiénes somos</p>
-      <h1 class="mt-2 text-4xl font-black tracking-tight sm:text-5xl">iPaletitas</h1>
-      <p class="mt-4 max-w-2xl text-lg leading-8 text-blue-50">
-        Somos una plataforma de gestión creada para paleterías y neverías. Nacimos para que los pequeños y medianos
-        negocios de paletas y helados controlen sus productos, ventas y personal desde un solo lugar, sin complicaciones.
+      <h1 class="font-display text-4xl font-semibold tracking-tight sm:text-5xl">Quiénes somos</h1>
+      <p class="mt-4 max-w-2xl text-lg leading-8 text-white md:pr-48">
+        iPaletitas es una plataforma de gestión creada para paleterías y neverías. Nacimos para que los pequeños y
+        medianos negocios de paletas y helados controlen sus productos, ventas y personal desde un solo lugar, sin
+        complicaciones.
       </p>
     </section>
 
-    <section class="grid gap-6 md:grid-cols-3">
-      <UiCard v-for="pilar in pilares" :key="pilar.titulo" class="p-7">
-        <span class="grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600">
-          <component :is="pilar.icono" class="size-6" />
+    <UiCard class="grid divide-slate-200 p-0 md:grid-cols-3 md:divide-x max-md:divide-y">
+      <section v-for="pilar in pilares" :key="pilar.titulo" class="p-7">
+        <span class="ip-picto size-10">
+          <component :is="pilar.icono" class="size-5" />
         </span>
-        <h2 class="mt-4 text-xl font-extrabold">{{ pilar.titulo }}</h2>
-        <p class="mt-2 leading-7 text-slate-500">{{ pilar.texto }}</p>
-      </UiCard>
-    </section>
+        <h2 class="mt-4 font-display text-xl font-semibold">{{ pilar.titulo }}</h2>
+        <p class="mt-2 leading-7 text-slate-600">{{ pilar.texto }}</p>
+      </section>
+    </UiCard>
 
     <section class="grid gap-6 lg:grid-cols-2">
       <UiCard v-for="item in diferenciadores" :key="item.titulo" class="p-7">
-        <span class="grid size-12 place-items-center rounded-2xl bg-amber-100 text-amber-700">
-          <component :is="item.icono" class="size-6" />
+        <span class="ip-picto size-10">
+          <component :is="item.icono" class="size-5" />
         </span>
-        <h2 class="mt-4 text-xl font-extrabold">{{ item.titulo }}</h2>
-        <p class="mt-2 leading-7 text-slate-500">{{ item.texto }}</p>
+        <h2 class="mt-4 font-display text-xl font-semibold">{{ item.titulo }}</h2>
+        <p class="mt-2 leading-7 text-slate-600">{{ item.texto }}</p>
       </UiCard>
     </section>
 
     <UiCard class="p-7">
-      <span class="grid size-12 place-items-center rounded-2xl bg-blue-50 text-blue-600">
-        <Sparkles class="size-6" />
+      <span class="ip-picto size-10">
+        <Sparkles class="size-5" />
       </span>
-      <h2 class="mt-4 text-xl font-extrabold">El plus que ofrece nuestra plataforma</h2>
+      <h2 class="mt-4 font-display text-xl font-semibold">El plus que ofrece nuestra plataforma</h2>
       <ul class="mt-4 grid list-none gap-x-8 gap-y-3 p-0 md:grid-cols-2">
         <li v-for="beneficio in plus" :key="beneficio" class="flex items-start gap-3 leading-7 text-slate-600">
           <Check class="mt-1.5 size-4 shrink-0 text-blue-600" />
@@ -128,8 +126,8 @@ const redes = [
     </UiCard>
 
     <UiCard class="p-8 text-center sm:p-10">
-      <h2 class="text-2xl font-extrabold">Síguenos en nuestras redes</h2>
-      <p class="mt-1 text-slate-500">Entérate de novedades, consejos y promociones.</p>
+      <h2 class="font-display text-2xl font-semibold">Síguenos en nuestras redes</h2>
+      <p class="mt-1 text-slate-600">Entérate de novedades, consejos y promociones.</p>
       <div class="mt-6 flex flex-wrap justify-center gap-3">
         <a
           v-for="red in redes"
@@ -138,7 +136,7 @@ const redes = [
           target="_blank"
           rel="noopener noreferrer"
           :class="[
-            'inline-flex items-center gap-2.5 rounded-full px-6 py-3 font-semibold text-white no-underline transition hover:-translate-y-0.5 hover:shadow-lg',
+            'ip-boton inline-flex min-h-11 items-center gap-2.5 rounded-full px-6 py-3 font-semibold text-white no-underline hover:brightness-110',
             red.fondo,
           ]"
         >

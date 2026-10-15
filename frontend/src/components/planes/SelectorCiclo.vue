@@ -3,35 +3,39 @@ import type { CicloPago } from '@/stores/catalogo'
 
 const ciclo = defineModel<CicloPago>({ required: true })
 
-const ciclos: { id: CicloPago; etiqueta: string }[] = [
+const ciclos: { id: CicloPago; etiqueta: string; nota?: string }[] = [
   { id: 'mensual', etiqueta: 'Mensual' },
-  { id: 'anual', etiqueta: 'Anual' },
+  { id: 'anual', etiqueta: 'Anual', nota: '2 meses gratis' },
 ]
 </script>
 
 <template>
-  <div class="inline-flex items-center gap-1 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200">
+  <div class="ciclo inline-flex items-center gap-1 rounded-md p-1" role="group" aria-label="Forma de pago">
     <button
       v-for="op in ciclos"
       :key="op.id"
       type="button"
       :aria-pressed="ciclo === op.id"
       :class="[
-        'flex cursor-pointer items-center gap-2 rounded-xl border-0 px-5 py-2 text-sm font-semibold transition',
-        ciclo === op.id ? 'bg-blue-600 text-white shadow' : 'bg-transparent text-slate-600 hover:text-blue-700',
+        'ip-boton flex min-h-11 cursor-pointer items-center gap-2 rounded-[4px] border-0 px-4 text-base font-semibold',
+        ciclo === op.id ? 'bg-blue-600 text-white' : 'bg-transparent text-slate-700 hover:text-blue-700',
       ]"
       @click="ciclo = op.id"
     >
       {{ op.etiqueta }}
-      <span
-        v-if="op.id === 'anual'"
-        :class="[
-          'rounded-full px-2 py-0.5 text-[11px]',
-          ciclo === 'anual' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700',
-        ]"
-      >
-        2 meses gratis
+      <span v-if="op.nota" :class="['text-sm font-medium', ciclo === op.id ? 'text-white' : 'text-emerald-800']">
+        {{ op.nota }}
       </span>
     </button>
   </div>
 </template>
+
+<style scoped>
+.ciclo {
+  background: #e6e9ef;
+}
+
+html.oscuro .ciclo {
+  background: #182132;
+}
+</style>

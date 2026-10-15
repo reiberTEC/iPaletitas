@@ -10,6 +10,7 @@ import {
   ROLES,
   clavePermiso,
   correoEnUso,
+  esSesionActual,
   esTitular,
   estado,
   ordenarPermisos,
@@ -33,6 +34,8 @@ const props = withDefaults(defineProps<{ usuario?: Usuario | null; pestanaInicia
 const emit = defineEmits<{ cerrar: []; guardar: [datos: DatosUsuario] }>()
 
 const titular = computed(() => !!props.usuario && esTitular(props.usuario))
+const propio = computed(() => !!props.usuario && esSesionActual(props.usuario))
+const bloqueado = computed(() => titular.value || propio.value)
 
 const form = reactive<DatosUsuario>(
   props.usuario
@@ -55,7 +58,7 @@ const pestana = ref<PestanaUsuario>(props.pestanaInicial)
 const hayErrores = computed(() => Object.keys(errores).length > 0)
 
 function elegirRol(rol: Rol) {
-  if (titular.value) return
+  if (bloqueado.value) return
   form.rol = rol
   form.permisos = permisosDeRol(rol)
 }
@@ -133,7 +136,7 @@ const pestanas = [
         role="tab"
         :aria-selected="pestana === p.id"
         :class="[
-          'relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-0 px-2 py-2.5 text-sm font-semibold whitespace-nowrap transition sm:gap-2 sm:px-3',
+          'relative flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-0 px-2 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors sm:gap-2 sm:px-3',
           pestana === p.id ? 'ip-pestana-activa bg-white text-blue-700 shadow-sm' : 'bg-transparent text-slate-500 hover:text-slate-900',
         ]"
         @click="pestana = p.id"
@@ -162,7 +165,7 @@ const pestanas = [
             type="email"
             class="ip-input"
             placeholder="nombre@minegocio.com"
-            :disabled="titular"
+            :disabled="bloqueado"
           />
           <p v-if="errores.correo" class="mt-1 text-xs font-medium text-rose-600">{{ errores.correo }}</p>
         </div>
@@ -192,11 +195,11 @@ const pestanas = [
             type="button"
             role="switch"
             :aria-checked="form.activo"
-            :disabled="titular"
+            :disabled="bloqueado"
             class="flex cursor-pointer items-center gap-3 border-0 bg-transparent p-0 text-left text-sm text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
             @click="form.activo = !form.activo"
           >
-            <span :class="['relative h-6 w-11 shrink-0 rounded-full transition', form.activo ? 'bg-emerald-500' : 'bg-slate-300']">
+            <span :class="['relative h-6 w-11 shrink-0 rounded-full transition-colors', form.activo ? 'bg-emerald-600' : 'bg-slate-300']">
               <span
                 :class="[
                   'absolute top-0.5 left-0.5 size-5 rounded-full bg-white shadow transition-transform',
@@ -216,6 +219,9 @@ const pestanas = [
         >
           Eres el titular de la cuenta: tu rol siempre es Administrador con todos los permisos.
         </p>
+        <p v-else-if="propio" class="mb-4 rounded-xl bg-orange-50 px-4 py-3 text-xs font-medium text-orange-800">
+          No puedes cambiar tu propio rol ni tus permisos. Pídeselo al titular de la cuenta.
+        </p>
 
         <h3 class="mb-3 text-sm font-extrabold text-slate-900">Rol</h3>
         <div class="mb-6 grid gap-3 sm:grid-cols-2">
@@ -223,8 +229,8 @@ const pestanas = [
             v-for="r in ROLES"
             :key="r.rol"
             :class="[
-              'flex items-start gap-3 rounded-2xl p-3.5 ring-1 transition',
-              titular && form.rol !== r.rol ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+              'flex items-start gap-3 rounded-2xl p-3.5 ring-1',
+              bloqueado && form.rol !== r.rol ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
               form.rol === r.rol ? `ring-2 ${estiloRol[r.rol].tarjeta}` : 'ring-slate-200 hover:ring-blue-300',
             ]"
           >
@@ -234,7 +240,7 @@ const pestanas = [
               class="ip-check mt-0.5"
               :value="r.rol"
               :checked="form.rol === r.rol"
-              :disabled="titular && form.rol !== r.rol"
+              :disabled="bloqueado && form.rol !== r.rol"
               @change="elegirRol(r.rol)"
             />
             <span>
@@ -249,11 +255,11 @@ const pestanas = [
 
         <div class="mb-3 flex flex-wrap items-center gap-2">
           <h3 class="text-sm font-extrabold text-slate-900">Permisos</h3>
-          <span v-if="personalizados" class="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+          <span v-if="personalizados" class="rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-blue-800">
             Personalizados
           </span>
           <button
-            v-if="personalizados"
+            v-if="personalizados && !bloqueado"
             type="button"
             class="ml-auto cursor-pointer border-0 bg-transparent text-xs font-semibold text-blue-600 hover:text-blue-700"
             @click="form.permisos = permisosDeRol(form.rol)"
@@ -279,7 +285,7 @@ const pestanas = [
                     type="checkbox"
                     class="ip-check mx-auto cursor-pointer"
                     :checked="tiene(m.id, a.id)"
-                    :disabled="titular"
+                    :disabled="bloqueado"
                     :aria-label="`${a.nombre} ${m.nombre}`"
                     @change="alternarPermiso(m.id, a.id)"
                   />
@@ -289,7 +295,7 @@ const pestanas = [
                     type="checkbox"
                     class="ip-check mx-auto cursor-pointer"
                     :checked="moduloCompleto(m.id)"
-                    :disabled="titular"
+                    :disabled="bloqueado"
                     :aria-label="`Todos los permisos de ${m.nombre}`"
                     @change="alternarModulo(m.id)"
                   />

@@ -1,8 +1,41 @@
+/* ---------- Base táctil (mobile-native) ---------- */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+a,
+[role='button'],
+[role='tab'],
+[role='switch'],
+label {
+  touch-action: manipulation;
+}
+
+button,
+[role='button'],
+[role='tab'] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Presión: el botón cede un poco al tocarlo, el color cambia sin retraso perceptible */
+.ip-boton {
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 160ms var(--ease-out);
+}
+
+.ip-boton:active {
+  transform: scale(0.97);
+}
+
+/* Fondo plano del sistema: un solo tono, sin degradados */
 .ip-fondo {
-  background:
-    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.16), transparent 60%),
-    radial-gradient(700px 380px at 90% 8%, rgba(252, 211, 77, 0.24), transparent 55%),
-    #f6f8ff;
+  background: #f5f6f8;
 }
 
 .ip-check {
@@ -11,36 +44,42 @@
   flex-shrink: 0;
   margin: 0;
   padding: 0;
-  accent-color: #2563eb;
+  accent-color: var(--marca-600);
 }
 
 .ip-label {
   display: block;
   margin-bottom: 0.4rem;
   color: #334155;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
   font-weight: 600;
 }
 
 .ip-input {
   width: 100%;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #d9dee6;
+  border-radius: 0.625rem;
   background: #fff;
   color: #0f172a;
   font: inherit;
-  font-size: 0.925rem;
+  font-size: 0.95rem;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
 }
 
 .ip-input:focus {
   outline: none;
-  border-color: #2563eb;
+  border-color: var(--marca-500);
   background: #fff;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--marca-500) 22%, transparent);
+}
+
+.ip-input:disabled {
+  background: #f1f3f6;
+  color: #64748b;
 }
 
 .ip-input.ip-input-icono {
@@ -48,40 +87,137 @@
 }
 
 .ip-input::placeholder {
-  color: #94a3b8;
+  color: #7b8798;
 }
 
+/* iOS amplía la página si el campo mide menos de 16px */
+@media (pointer: coarse) {
+  .ip-input,
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Tablas densas: filas con regla fina y cifras de ancho fijo */
 .ip-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .ip-table th {
-  padding: 0.75rem 1rem;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid #e3e7ed;
+  background: #f7f8fa;
+  color: #5b6677;
+  font-size: 0.78rem;
+  font-weight: 600;
   text-align: left;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .ip-table td {
-  padding: 0.85rem 1rem;
-  border-top: 1px solid #f1f5f9;
-  color: #334155;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid #edf0f4;
+  color: #273244;
   vertical-align: middle;
 }
 
 .ip-table tbody tr {
-  transition: background-color 0.15s ease;
+  transition: background-color 120ms ease;
 }
 
-.ip-table tbody tr:hover {
-  background: #f8fafc;
+@media (hover: hover) and (pointer: fine) {
+  .ip-table tbody tr:hover {
+    background: color-mix(in oklab, var(--marca-50) 70%, #fff);
+  }
+}
+
+/* Pictograma de estación: el ícono de cada sección sobre la línea de color del negocio */
+.ip-picto {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 28%;
+  background: var(--marca-600);
+  color: #fff;
+}
+
+/* Cifras grandes: tipografía display con dígitos de ancho fijo, nunca se recortan */
+.ip-cifra {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* Tira de indicadores: celdas separadas por una regla fina, como el tablero de un andén */
+.ip-tira {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #e3e7ed;
+  border-radius: 1rem;
+  background: #e3e7ed;
+}
+
+.ip-tira > * {
+  min-width: 0;
+  container-type: inline-size;
+  background: #fff;
+}
+
+.ip-tira .ip-cifra {
+  font-size: clamp(1.1rem, 9cqi, 1.875rem);
+}
+
+/* Aviso flotante tras guardar: entra desde abajo y se va rápido */
+.ip-aviso {
+  position: fixed;
+  right: 1.25rem;
+  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  z-index: 70;
+  display: flex;
+  max-width: min(28rem, calc(100vw - 2.5rem));
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.85rem 1.25rem;
+  border-radius: 1rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  box-shadow: 0 12px 32px -12px rgb(15 23 42 / 0.45);
+}
+
+.aviso-enter-active {
+  transition:
+    opacity 200ms var(--ease-out),
+    transform 200ms var(--ease-out);
+}
+
+.aviso-leave-active {
+  transition:
+    opacity 150ms var(--ease-out),
+    transform 150ms var(--ease-out);
+}
+
+.aviso-enter-from,
+.aviso-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aviso-enter-from,
+  .aviso-leave-to {
+    transform: none;
+  }
 }
 
 @media print {

@@ -15,10 +15,13 @@ import {
   actualizarUsuario,
   crearUsuario,
   eliminarUsuario,
+  esSesionActual,
   esTitular,
   estado,
   nombreSucursal,
+  puede,
   puedeAgregar,
+  sesionEsTitular,
   resumenUso,
   type DatosUsuario,
   type Rol,
@@ -60,7 +63,7 @@ const indicadores = computed(() => {
   const total = estado.usuarios.length
   const activos = estado.usuarios.filter((u) => u.activo).length
   return [
-    { titulo: 'Equipo total', valor: total, detalle: resumenUso('usuarios'), icono: Users, destacado: true },
+    { titulo: 'Equipo total', valor: total, detalle: resumenUso('usuarios'), icono: Users },
     { titulo: 'Activos', valor: activos, detalle: `${total ? Math.round((activos / total) * 100) : 0}% del equipo`, icono: CircleCheck },
     { titulo: 'Inactivos', valor: total - activos, detalle: 'Sin acceso a la plataforma', icono: CirclePause },
     {
@@ -115,14 +118,22 @@ function confirmarEliminacion() {
   porEliminar.value = null
 }
 
+const puedeEditar = (usuario: Usuario) => puede('usuarios.editar') && (!esTitular(usuario) || sesionEsTitular.value)
+
+function motivoNoEliminar(usuario: Usuario) {
+  if (esTitular(usuario)) return 'No se puede eliminar al titular de la cuenta'
+  if (esSesionActual(usuario)) return 'No puedes eliminar tu propio usuario'
+  return ''
+}
+
 const botonIcono =
-  'grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-slate-100 text-slate-600 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0'
+  'ip-boton grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-slate-100 text-slate-600 transition-colors disabled:cursor-not-allowed disabled:opacity-40'
 </script>
 
 <template>
   <div>
     <Encabezado titulo="Usuarios y accesos" descripcion="Administra a tu equipo, sus roles y lo que puede hacer en la plataforma.">
-      <UiButton :disabled="!puedeAgregar('usuarios')" @click="abrirNuevo">
+      <UiButton v-if="puede('usuarios.crear')" :disabled="!puedeAgregar('usuarios')" @click="abrirNuevo">
         <UserPlus class="size-4" />
         Nuevo usuario
       </UiButton>
@@ -130,28 +141,14 @@ const botonIcono =
 
     <AvisoLimite limite="usuarios" @cambiarPlan="$emit('cambiarPlan')" />
 
-    <div class="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      <div
-        v-for="kpi in indicadores"
-        :key="kpi.titulo"
-        :class="[
-          'relative rounded-3xl p-6',
-          kpi.destacado
-            ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-xl shadow-blue-600/25'
-            : 'bg-white shadow-sm ring-1 ring-slate-200/70',
-        ]"
-      >
-        <span
-          :class="[
-            'absolute top-5 right-5 grid size-10 place-items-center rounded-full',
-            kpi.destacado ? 'bg-white/15 text-white' : 'bg-blue-50 text-blue-600',
-          ]"
-        >
-          <component :is="kpi.icono" class="size-5" />
-        </span>
-        <p :class="['text-sm', kpi.destacado ? 'text-blue-100' : 'text-slate-500']">{{ kpi.titulo }}</p>
-        <p :class="['mt-2 text-4xl font-extrabold', kpi.destacado ? 'text-white' : 'text-slate-900']">{{ kpi.valor }}</p>
-        <p :class="['mt-1 text-xs', kpi.destacado ? 'text-blue-100' : 'text-slate-500']">{{ kpi.detalle }}</p>
+    <div class="ip-tira mb-6 sm:grid-cols-2 xl:grid-cols-4">
+      <div v-for="kpi in indicadores" :key="kpi.titulo" class="p-5">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm text-slate-500">{{ kpi.titulo }}</p>
+          <span class="ip-picto size-8"><component :is="kpi.icono" class="size-4" /></span>
+        </div>
+        <p class="ip-cifra mt-2 text-3xl text-slate-900">{{ kpi.valor.toLocaleString('es-MX') }}</p>
+        <p class="mt-1 text-xs text-slate-500">{{ kpi.detalle }}</p>
       </div>
     </div>
 
@@ -159,7 +156,7 @@ const botonIcono =
       <div class="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4">
         <label class="relative min-w-0 flex-1 basis-60">
           <span class="sr-only">Buscar</span>
-          <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+          <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-500" />
           <input v-model="busqueda" type="search" class="ip-input ip-input-icono" placeholder="Buscar por nombre, correo o puesto" />
         </label>
         <select v-model="filtroRol" class="ip-input w-auto! cursor-pointer" aria-label="Filtrar por rol">
@@ -207,12 +204,18 @@ const botonIcono =
                   >
                     {{ iniciales(usuario.nombre) }}
                   </span>
-                  <div class="min-w-0">
-                    <p class="font-semibold text-slate-900">
+                  <div class="min-w-0 max-w-64">
+                    <p class="font-semibold [overflow-wrap:anywhere] text-slate-900">
                       {{ usuario.nombre }}
-                      <span v-if="esTitular(usuario)" class="ml-1 text-xs font-medium text-blue-600">(tú)</span>
+                      <span v-if="esSesionActual(usuario)" class="ml-1 text-xs font-medium text-blue-700">(tú)</span>
+                      <span
+                        v-if="esTitular(usuario)"
+                        class="ml-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold whitespace-nowrap text-blue-800"
+                      >
+                        Titular
+                      </span>
                     </p>
-                    <p class="text-xs text-slate-400">{{ usuario.correo }}</p>
+                    <p class="truncate text-xs text-slate-500" :title="usuario.correo">{{ usuario.correo }}</p>
                   </div>
                 </div>
               </td>
@@ -226,11 +229,11 @@ const botonIcono =
               <td>
                 <div class="h-1.5 w-24 overflow-hidden rounded-full bg-slate-200" :title="`${usuario.permisos.length} de ${totalPermisos} permisos`">
                   <div
-                    class="h-full rounded-full bg-gradient-to-r from-blue-500 to-emerald-500"
+                    class="h-full rounded-full bg-blue-600"
                     :style="{ width: `${(usuario.permisos.length / totalPermisos) * 100}%` }"
                   />
                 </div>
-                <p class="mt-1 text-xs text-slate-500">{{ usuario.permisos.length }}/{{ totalPermisos }}</p>
+                <p class="mt-1 text-xs text-slate-500 tabular-nums">{{ usuario.permisos.length }}/{{ totalPermisos }}</p>
               </td>
               <td>
                 <span
@@ -248,10 +251,18 @@ const botonIcono =
                   <button type="button" :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']" title="Ver detalle" :aria-label="`Ver a ${usuario.nombre}`" @click="detalle = usuario">
                     <Eye class="size-4" />
                   </button>
-                  <button type="button" :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']" title="Editar" :aria-label="`Editar a ${usuario.nombre}`" @click="abrirEdicion(usuario)">
+                  <button
+                    v-if="puedeEditar(usuario)"
+                    type="button"
+                    :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']"
+                    title="Editar"
+                    :aria-label="`Editar a ${usuario.nombre}`"
+                    @click="abrirEdicion(usuario)"
+                  >
                     <Pencil class="size-4" />
                   </button>
                   <button
+                    v-if="puedeEditar(usuario)"
                     type="button"
                     :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']"
                     title="Rol y permisos"
@@ -261,11 +272,12 @@ const botonIcono =
                     <ShieldCheck class="size-4" />
                   </button>
                   <button
+                    v-if="puede('usuarios.eliminar')"
                     type="button"
                     :class="[botonIcono, 'hover:bg-rose-50 hover:text-rose-600']"
-                    :title="esTitular(usuario) ? 'No puedes eliminar al titular de la cuenta' : 'Eliminar'"
+                    :title="motivoNoEliminar(usuario) || 'Eliminar'"
                     :aria-label="`Eliminar a ${usuario.nombre}`"
-                    :disabled="esTitular(usuario)"
+                    :disabled="!!motivoNoEliminar(usuario)"
                     @click="porEliminar = usuario"
                   >
                     <Trash class="size-4" />
@@ -279,7 +291,7 @@ const botonIcono =
         <div v-if="!filtrados.length" class="flex flex-col items-center gap-3 px-4 py-12 text-sm text-slate-500">
           <p>{{ hayFiltros ? 'Ningún usuario coincide con los filtros.' : 'Aún no hay usuarios registrados.' }}</p>
           <UiButton v-if="hayFiltros" variant="outline" size="sm" @click="limpiarFiltros">Limpiar filtros</UiButton>
-          <UiButton v-else-if="puedeAgregar('usuarios')" size="sm" @click="abrirNuevo">
+          <UiButton v-else-if="puede('usuarios.crear') && puedeAgregar('usuarios')" size="sm" @click="abrirNuevo">
             <UserPlus class="size-4" />
             Agregar el primero
           </UiButton>
@@ -298,6 +310,7 @@ const botonIcono =
     <DetalleUsuario
       v-if="detalle"
       :usuario="detalle"
+      :editable="puedeEditar(detalle)"
       @cerrar="detalle = null"
       @editar="abrirEdicion(detalle!)"
       @permisos="abrirEdicion(detalle!, 'permisos')"
@@ -310,7 +323,7 @@ const botonIcono =
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <UiButton variant="outline" @click="porEliminar = null">Cancelar</UiButton>
-        <UiButton class="from-rose-600 to-rose-700 shadow-rose-600/25 hover:shadow-rose-600/40" @click="confirmarEliminacion">
+        <UiButton class="bg-rose-600 hover:bg-rose-700" @click="confirmarEliminacion">
           <Trash class="size-4" />
           Eliminar
         </UiButton>
@@ -318,29 +331,10 @@ const botonIcono =
     </UiModal>
 
     <Transition name="aviso">
-      <div
-        v-if="aviso"
-        class="fixed right-5 bottom-5 z-[70] flex items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3.5 text-sm font-semibold text-white shadow-2xl"
-        role="status"
-      >
-        <CircleCheck class="size-4 text-emerald-400" />
+      <div v-if="aviso" class="ip-aviso flex items-center gap-2" role="status">
+        <CircleCheck class="size-4 shrink-0 text-emerald-400" />
         {{ aviso }}
       </div>
     </Transition>
   </div>
 </template>
-
-<style scoped>
-.aviso-enter-active,
-.aviso-leave-active {
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
-}
-
-.aviso-enter-from,
-.aviso-leave-to {
-  opacity: 0;
-  transform: translateY(12px);
-}
-</style>

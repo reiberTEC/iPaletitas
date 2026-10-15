@@ -8,14 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <div
-    :class="
-      cn(
-        'rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm shadow-slate-900/5 backdrop-blur-xl',
-        $props.class,
-      )
-    "
-  >
+  <div :class="cn('rounded-2xl border border-slate-200 bg-white', $props.class)">
     <slot />
   </div>
 </template>

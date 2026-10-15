@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import { Line } from 'vue-chartjs'
 import {
   CategoryScale,
@@ -11,9 +11,18 @@ import {
   Tooltip,
   type ChartData,
   type ChartOptions,
-  type ScriptableContext,
 } from 'chart.js'
-import { ArrowRight, Banknote, PackagePlus, Receipt, ShoppingCart, TrendingUp, TriangleAlert } from '@lucide/vue'
+import {
+  ArrowRight,
+  Banknote,
+  Clock,
+  Lightbulb,
+  PackagePlus,
+  Receipt,
+  ShoppingCart,
+  TrendingUp,
+  TriangleAlert,
+} from '@lucide/vue'
 import pina from '@/assets/Img/Piña.jpg'
 import paliSenalando from '@/assets/Img/pali-senalando.webp'
 import paliPulgar from '@/assets/Img/pali-pulgar.webp'
@@ -23,12 +32,16 @@ import UiBadge from '../ui/Badge.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Ticket from './Ticket.vue'
-import type { Seccion } from './secciones'
+import { puedeVer, type Seccion } from './secciones'
 import {
+  DIAS_COBRO,
   diasRestantes,
   enPrueba,
   estado,
+  faseActual,
   limiteDe,
+  puede,
+  semanaGratis,
   stock,
   sucursalActiva,
   uso,
@@ -36,11 +49,16 @@ import {
   type Limite,
   type Venta,
 } from '@/stores/negocio'
-import { dinero, hora, mismoDia } from '@/lib/formato'
+import { dinero, hora, mismoDia, plural } from '@/lib/formato'
+import { rampaActual } from '@/lib/marca'
+import { textoTarjeta } from '@/lib/tarjeta'
+import { tema } from '@/lib/tema'
 
 ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Filler, Tooltip)
 
 defineEmits<{ ir: [seccion: Seccion]; cambiarPlan: [] }>()
+
+const puedeSurtir = computed(() => puede('entradas.crear'))
 
 const ventaVista = ref<Venta | null>(null)
 
@@ -56,6 +74,11 @@ const promedio = computed(() => (deHoy.value.length ? totalHoy.value / deHoy.val
 const bajoStock = computed(() =>
   estado.productos.filter((p) => stock(p) <= p.stockMinimo).sort((a, b) => stock(a) - stock(b)),
 )
+
+const destinoAlertas = computed<Seccion | null>(() => {
+  if (bajoStock.value.length) return puedeSurtir.value ? 'entradas' : puedeVer('productos') ? 'productos' : null
+  return puede('licencia.editar') ? 'suscripciones' : null
+})
 
 const semana = computed(() =>
   Array.from({ length: 7 }, (_, i) => {
@@ -94,16 +117,11 @@ const mensajeVentas = computed(() => {
   return `Ventas de la semana ${c}%. ¡Pali sabe que vas a remontar!`
 })
 
-function degradadoHorizontal(contexto: ScriptableContext<'line'>, inicio: string, fin: string) {
-  const { ctx, chartArea } = contexto.chart
-  if (!chartArea) return inicio
-  const degradado = ctx.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
-  degradado.addColorStop(0, inicio)
-  degradado.addColorStop(1, fin)
-  return degradado
-}
-
+/* La línea de ventas va en el color del negocio, plana: trazo de la marca y relleno de un tono claro. */
 const datosVentas = computed<ChartData<'line'>>(() => {
+  const rampa = rampaActual.value
+  const oscuro = tema.value === 'oscuro'
+  const trazo = oscuro ? rampa[400] : rampa[600]
   const ultimo = semana.value.length - 1
   return {
     labels: semana.value.map((d) => (d.esHoy ? 'Hoy' : d.etiqueta)),
@@ -112,25 +130,24 @@ const datosVentas = computed<ChartData<'line'>>(() => {
         label: 'Ventas',
         data: semana.value.map((d) => d.total),
         fill: true,
-        tension: 0.45,
-        borderWidth: 4,
-        borderColor: (contexto) => degradadoHorizontal(contexto, '#6366f1', '#10b981'),
-        backgroundColor: (contexto) =>
-          degradadoHorizontal(contexto, 'rgba(99, 102, 241, 0.18)', 'rgba(16, 185, 129, 0.35)'),
-        pointStyle: 'triangle',
-        pointRotation: 45,
-        pointRadius: semana.value.map((_, i) => (i === ultimo ? 9 : 0)),
-        pointHoverRadius: semana.value.map((_, i) => (i === ultimo ? 10 : 5)),
-        pointBackgroundColor: '#10b981',
-        pointBorderColor: '#10b981',
+        tension: 0.35,
+        borderWidth: 3,
+        borderColor: trazo,
+        backgroundColor: oscuro ? rampa[950] : rampa[100],
+        pointRadius: semana.value.map((_, i) => (i === ultimo ? 5 : 0)),
+        pointHoverRadius: 6,
+        pointBackgroundColor: trazo,
+        pointBorderColor: oscuro ? '#131a26' : '#ffffff',
+        pointBorderWidth: 2,
       },
     ],
   }
 })
 
-const opcionesVentas: ChartOptions<'line'> = {
+const opcionesVentas = computed<ChartOptions<'line'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
+  animation: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? false : { duration: 300, easing: 'easeOutQuart' },
   interaction: { mode: 'index', intersect: false },
   plugins: {
     legend: { display: false },
@@ -138,9 +155,15 @@ const opcionesVentas: ChartOptions<'line'> = {
   },
   scales: {
     x: { display: false },
-    y: { display: false, beginAtZero: true, grace: '10%' },
+    y: {
+      beginAtZero: true,
+      grace: '10%',
+      border: { display: false },
+      ticks: { display: false, maxTicksLimit: 5 },
+      grid: { color: tema.value === 'oscuro' ? '#1b2436' : '#eef1f5', drawTicks: false },
+    },
   },
-}
+}))
 
 function masVendida(ventas: Venta[]) {
   const piezas = new Map<string, { nombre: string; cantidad: number }>()
@@ -164,26 +187,40 @@ const paletaDelDia = computed(() => {
   return semanal ? { ...semanal, periodo: 'esta semana' } : null
 })
 
+type TipoAlerta = 'peligro' | 'aviso' | 'info'
+
 interface Alerta {
-  tipo: 'peligro' | 'aviso' | 'info'
+  tipo: TipoAlerta
   titulo: string
   detalle: string
 }
+
+const iconoAlerta: Record<TipoAlerta, Component> = { peligro: TriangleAlert, aviso: Clock, info: Lightbulb }
 
 const nombresLimite: Record<Limite, string> = { sucursales: 'sucursales', usuarios: 'usuarios', productos: 'productos' }
 
 const alertas = computed<Alerta[]>(() => {
   const lista: Alerta[] = bajoStock.value.slice(0, 2).map((p) => ({
     tipo: 'peligro',
-    titulo: `Bajo stock en ${p.nombre}`,
-    detalle: `Quedan ${stock(p)} pzas, ¡haz un pedido!`,
+    titulo: stock(p) ? `Bajo stock en ${p.nombre}` : `Se agotó ${p.nombre}`,
+    detalle: stock(p) ? `Quedan ${plural(stock(p), 'pieza', 'piezas')}, ¡haz un pedido!` : 'Súrtelo para volver a venderlo.',
   }))
 
-  if (enPrueba.value) {
+  if (enPrueba.value && faseActual.value === 'vigente') {
     lista.push({
       tipo: 'aviso',
-      titulo: `Te quedan ${diasRestantes.value} días de prueba`,
-      detalle: 'Elige tu suscripción para no perder el acceso.',
+      titulo: `Te ${diasRestantes.value === 1 ? 'queda' : 'quedan'} ${plural(diasRestantes.value, 'día', 'días')} de prueba`,
+      detalle: estado.licencia?.tarjeta
+        ? `Al terminar, cobramos tu primer periodo a tu ${textoTarjeta(estado.licencia.tarjeta)}.`
+        : `Al terminar, tienes ${DIAS_COBRO} días para pagar tu licencia por transferencia.`,
+    })
+  }
+
+  if (semanaGratis.value && puede('licencia.editar')) {
+    lista.push({
+      tipo: 'info',
+      titulo: `Semana gratis: ${semanaGratis.value.dias === 1 ? 'queda' : 'quedan'} ${plural(semanaGratis.value.dias, 'día', 'días')}`,
+      detalle: 'Si el servicio no te convence, pide tu devolución completa desde Mi licencia.',
     })
   }
 
@@ -211,59 +248,72 @@ const alertas = computed<Alerta[]>(() => {
 const ultimas = computed(() => [...ventasSucursal.value].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 6))
 
 const kpis = computed(() => [
-  { titulo: 'Ventas de hoy', valor: dinero(totalHoy.value), detalle: 'IVA incluido', icono: Banknote, color: 'bg-blue-600/10 text-blue-600' },
-  { titulo: 'Tickets', valor: String(deHoy.value.length), detalle: 'emitidos hoy', icono: Receipt, color: 'bg-emerald-500/10 text-emerald-600' },
-  { titulo: 'Ticket promedio', valor: dinero(promedio.value), detalle: 'por cliente', icono: TrendingUp, color: 'bg-amber-300/30 text-amber-700' },
-  { titulo: 'Bajo stock', valor: String(bajoStock.value.length), detalle: 'productos por surtir', icono: TriangleAlert, color: 'bg-rose-500/10 text-rose-600' },
+  { titulo: 'Ventas de hoy', valor: dinero(totalHoy.value), detalle: 'IVA incluido', icono: Banknote, alerta: false },
+  { titulo: 'Tickets', valor: deHoy.value.length.toLocaleString('es-MX'), detalle: 'emitidos hoy', icono: Receipt, alerta: false },
+  { titulo: 'Ticket promedio', valor: dinero(promedio.value), detalle: 'por cliente', icono: TrendingUp, alerta: false },
+  {
+    titulo: 'Bajo stock',
+    valor: bajoStock.value.length.toLocaleString('es-MX'),
+    detalle: bajoStock.value.length === 1 ? 'producto por surtir' : 'productos por surtir',
+    icono: TriangleAlert,
+    alerta: bajoStock.value.length > 0,
+  },
 ])
 </script>
 
 <template>
   <div>
-    <section class="relative mb-8 overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 to-blue-800 p-8 text-white sm:p-10">
-      <div class="banner-foto" :style="{ backgroundImage: `url(${pina})` }" aria-hidden="true" />
-      <div class="absolute -bottom-24 -left-16 size-72 rounded-full bg-blue-400/25 blur-3xl" />
-      <img
-        :src="paliSaludando"
-        alt=""
-        aria-hidden="true"
-        class="pali-saludando pointer-events-none absolute right-6 -bottom-3 hidden h-40 w-auto drop-shadow-xl lg:block"
-      />
-      <div class="relative max-w-xl">
+    <section class="mb-6 grid overflow-hidden rounded-3xl bg-blue-600 text-white md:grid-cols-[minmax(0,1fr)_minmax(0,38%)]">
+      <div class="p-7 sm:p-10">
         <UiBadge variant="outline">Sucursal {{ sucursalActiva?.nombre }}</UiBadge>
-        <h1 class="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+        <h1 class="font-display mt-4 text-3xl font-semibold [overflow-wrap:anywhere] sm:text-4xl">
           {{ saludo }}, {{ estado.sesion?.nombre?.split(' ')[0] }}
         </h1>
-        <p class="mt-2 text-blue-100">Este es el resumen de tu negocio. ¿Qué quieres hacer ahora?</p>
-        <div class="mt-6 flex flex-wrap gap-3">
-          <UiButton variant="secondary" size="lg" @click="$emit('ir', 'venta')">
+        <p class="mt-2 max-w-[52ch]">Este es el resumen de tu negocio. ¿Qué quieres hacer ahora?</p>
+        <div v-if="puedeVer('venta') || puedeSurtir" class="mt-6 flex flex-wrap gap-3">
+          <UiButton
+            v-if="puedeVer('venta')"
+            size="lg"
+            class="bg-white text-slate-900 hover:bg-blue-50"
+            @click="$emit('ir', 'venta')"
+          >
             <ShoppingCart class="size-5" />
             Nueva venta
           </UiButton>
-          <UiButton variant="outline" size="lg" class="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" @click="$emit('ir', 'entradas')">
+          <UiButton
+            v-if="puedeSurtir"
+            variant="outline"
+            size="lg"
+            class="bg-transparent text-white ring-white/45 hover:bg-white/10 hover:text-white hover:ring-white/70"
+            @click="$emit('ir', 'entradas')"
+          >
             <PackagePlus class="size-5" />
             Registrar entrada
           </UiButton>
         </div>
       </div>
+      <div class="relative hidden md:block" aria-hidden="true">
+        <img :src="pina" alt="" class="absolute inset-0 size-full object-cover" />
+        <img :src="paliSaludando" alt="" class="absolute bottom-0 left-4 h-40 w-auto" />
+      </div>
     </section>
 
-    <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-      <UiCard v-for="kpi in kpis" :key="kpi.titulo" class="p-6">
-        <div class="flex items-center justify-between">
+    <div class="ip-tira sm:grid-cols-2 xl:grid-cols-4">
+      <div v-for="kpi in kpis" :key="kpi.titulo" class="p-5 sm:p-6">
+        <div class="flex items-center justify-between gap-3">
           <p class="text-sm font-semibold text-slate-500">{{ kpi.titulo }}</p>
-          <span :class="['grid size-10 place-items-center rounded-xl', kpi.color]">
-            <component :is="kpi.icono" class="size-5" />
+          <span :class="['ip-picto size-8', { peligro: kpi.alerta }]" aria-hidden="true">
+            <component :is="kpi.icono" class="size-4" />
           </span>
         </div>
-        <p class="mt-4 text-3xl font-extrabold tracking-tight">{{ kpi.valor }}</p>
-        <p class="mt-1 text-xs text-slate-400">{{ kpi.detalle }}</p>
-      </UiCard>
+        <p :class="['ip-cifra mt-3', kpi.alerta ? 'text-rose-700' : 'text-slate-900']">{{ kpi.valor }}</p>
+        <p class="mt-1 text-xs text-slate-500">{{ kpi.detalle }}</p>
+      </div>
     </div>
 
     <UiCard class="mt-6 p-6 sm:p-8">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-2xl font-extrabold tracking-tight">Crecimiento de tu negocio</h2>
+        <h2 class="font-display text-xl font-semibold sm:text-2xl">Crecimiento de tu negocio</h2>
         <UiBadge variant="blue">Últimos 7 días</UiBadge>
       </div>
 
@@ -271,23 +321,25 @@ const kpis = computed(() => [
         <article class="columna">
           <h3 class="columna-titulo">Resumen de ventas</h3>
           <p class="text-sm text-slate-500">
-            Total de la semana: <strong class="text-slate-900">{{ dinero(totalSemana) }}</strong>
+            Total de la semana: <strong class="tabular-nums text-slate-900">{{ dinero(totalSemana) }}</strong>
           </p>
           <div class="mt-4 mb-5 flex w-full flex-1 items-end gap-2">
             <img :src="paliSenalando" alt="Pali señalando la gráfica de ventas" class="w-[34%] max-w-[130px] object-contain" />
             <div class="flex min-w-0 flex-1 flex-col items-center">
-              <div class="grafica-lienzo">
+              <div class="relative h-[150px] w-full">
                 <Line :data="datosVentas" :options="opcionesVentas" aria-label="Ventas de los últimos 7 días" />
               </div>
-              <div class="mt-1 flex w-full justify-between text-[11px] font-semibold text-slate-400 capitalize">
-                <span v-for="dia in semana" :key="dia.etiqueta" :class="{ 'text-blue-600': dia.esHoy }">
+              <div class="mt-1 flex w-full justify-between text-[11px] font-semibold text-slate-500 capitalize">
+                <span v-for="dia in semana" :key="dia.etiqueta" :class="{ 'text-blue-700': dia.esHoy }">
                   {{ dia.esHoy ? 'Hoy' : dia.etiqueta.slice(0, 2) }}
                 </span>
               </div>
             </div>
           </div>
           <p class="mb-4 text-center text-sm font-semibold text-slate-700">{{ mensajeVentas }}</p>
-          <button type="button" class="btn-accion" @click="$emit('ir', 'historial')">Ver historial de ventas</button>
+          <UiButton v-if="puedeVer('historial')" class="mt-auto" @click="$emit('ir', 'historial')">
+            Ver historial de ventas
+          </UiButton>
         </article>
 
         <article class="columna">
@@ -295,34 +347,39 @@ const kpis = computed(() => [
           <img :src="paliPulgar" alt="Pali con el pulgar arriba" class="my-3 max-h-[200px] w-full max-w-[300px] object-contain" />
           <p v-if="paletaDelDia" class="mb-5 text-center text-sm text-slate-600">
             <strong class="text-slate-900">{{ paletaDelDia.nombre }}</strong>
-            · {{ paletaDelDia.cantidad }} pzas {{ paletaDelDia.periodo }}
+            · {{ plural(paletaDelDia.cantidad, 'pieza', 'piezas') }} {{ paletaDelDia.periodo }}
           </p>
           <p v-else class="mb-5 text-center text-sm text-slate-500">Aún no hay ventas. ¡Haz la primera!</p>
-          <button type="button" class="btn-accion" @click="$emit('ir', 'productos')">Analizar productos</button>
+          <UiButton v-if="puedeVer('productos')" class="mt-auto" @click="$emit('ir', 'productos')">
+            Analizar productos
+          </UiButton>
         </article>
 
         <article class="columna">
           <h3 class="columna-titulo">Alertas y oportunidades</h3>
           <div class="mt-4 mb-5 flex w-full flex-1 items-center gap-3">
-            <ul class="flex flex-1 list-none flex-col gap-2.5 p-0">
+            <ul class="flex min-w-0 flex-1 list-none flex-col gap-2 p-0">
               <li v-for="alerta in alertas" :key="alerta.titulo" :class="['alerta', alerta.tipo]">
-                <strong>{{ alerta.titulo }}</strong>
-                <span>{{ alerta.detalle }}</span>
+                <span class="alerta-icono" aria-hidden="true">
+                  <component :is="iconoAlerta[alerta.tipo]" class="size-4" />
+                </span>
+                <span class="min-w-0">
+                  <strong>{{ alerta.titulo }}</strong>
+                  <span>{{ alerta.detalle }}</span>
+                </span>
               </li>
             </ul>
             <img :src="paliPensando" alt="Pali pensando" class="w-[28%] max-w-[110px] object-contain" />
           </div>
-          <button type="button" class="btn-accion" @click="$emit('ir', bajoStock.length ? 'entradas' : 'suscripciones')">
-            Tomar acción
-          </button>
+          <UiButton v-if="destinoAlertas" class="mt-auto" @click="$emit('ir', destinoAlertas)">Tomar acción</UiButton>
         </article>
       </div>
     </UiCard>
 
     <UiCard class="mt-6 overflow-hidden">
       <div class="flex items-center justify-between p-6 pb-4">
-        <h3 class="text-lg font-bold">Últimas ventas</h3>
-        <UiButton variant="ghost" size="sm" @click="$emit('ir', 'historial')">
+        <h3 class="font-display text-lg font-semibold">Últimas ventas</h3>
+        <UiButton v-if="puedeVer('historial')" variant="ghost" size="sm" @click="$emit('ir', 'historial')">
           Ver historial
           <ArrowRight class="size-4" />
         </UiButton>
@@ -341,13 +398,17 @@ const kpis = computed(() => [
           <tbody>
             <tr v-for="venta in ultimas" :key="venta.id" class="cursor-pointer" @click="ventaVista = venta">
               <td class="font-bold text-slate-900">#{{ venta.folio }}</td>
-              <td>{{ hora(venta.fecha) }}</td>
-              <td class="max-w-xs truncate">{{ venta.partidas.map((p) => p.nombre).join(', ') }}</td>
+              <td class="whitespace-nowrap">{{ hora(venta.fecha) }}</td>
+              <td>
+                <span class="block max-w-xs truncate" :title="venta.partidas.map((p) => p.nombre).join(', ')">
+                  {{ venta.partidas.map((p) => p.nombre).join(', ') }}
+                </span>
+              </td>
               <td><UiBadge>{{ venta.metodoPago }}</UiBadge></td>
-              <td class="text-right font-bold text-slate-900">{{ dinero(venta.total) }}</td>
+              <td class="text-right font-bold whitespace-nowrap text-slate-900">{{ dinero(venta.total) }}</td>
             </tr>
             <tr v-if="!ultimas.length">
-              <td colspan="5" class="py-10 text-center text-slate-400">Aún no hay ventas en esta sucursal.</td>
+              <td colspan="5" class="py-10 text-center text-slate-500">Aún no hay ventas en esta sucursal.</td>
             </tr>
           </tbody>
         </table>
@@ -375,95 +436,65 @@ const kpis = computed(() => [
 .columna-titulo {
   align-self: stretch;
   margin-bottom: 0.25rem;
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
 }
 
-.grafica-lienzo {
-  position: relative;
-  width: 100%;
-  height: 150px;
-  border-bottom: 1px solid #e2e8f0;
-  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 37px, #f1f5f9 37px, #f1f5f9 38px);
+.ip-picto.peligro {
+  background: #e11d48;
 }
 
+/* Alertas: el ícono lleva el color del aviso; el fondo es un solo tono, sin filos de color */
 .alerta {
   display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.65rem 0.85rem;
-  border-left: 4px solid;
-  border-radius: 10px;
-  font-size: 0.8rem;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
   color: #334155;
+  font-size: 0.8rem;
 }
 
 .alerta strong {
-  font-size: 0.9rem;
+  display: block;
   color: #0f172a;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.alerta-icono {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 0.5rem;
+  color: #fff;
 }
 
 .alerta.peligro {
-  background: #fde8e8;
-  border-color: #f87171;
+  background: #fff1f2;
+}
+
+.alerta.peligro .alerta-icono {
+  background: #e11d48;
 }
 
 .alerta.aviso {
-  background: #fef3c7;
-  border-color: #fbbf24;
+  background: #fff7ed;
+}
+
+.alerta.aviso .alerta-icono {
+  background: #c2410c;
 }
 
 .alerta.info {
-  background: #e0f2fe;
-  border-color: #38bdf8;
+  background: var(--marca-50);
 }
 
-.btn-accion {
-  margin-top: auto;
-  padding: 0.7rem 1.7rem;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(to bottom, #3b82f6, #2563eb);
-  color: #fff;
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-}
-
-.btn-accion:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.4);
-}
-
-.pali-saludando {
-  transform-origin: bottom center;
-  animation: saludo 3s ease-in-out infinite;
-}
-
-@keyframes saludo {
-  0%,
-  100% {
-    transform: rotate(0);
-  }
-  50% {
-    transform: rotate(-4deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pali-saludando {
-    animation: none;
-  }
-}
-
-html.oscuro .grafica-lienzo {
-  border-color: #1e293b;
-  background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 37px, #131b2b 37px, #131b2b 38px);
+.alerta.info .alerta-icono {
+  background: var(--marca-600);
 }
 
 html.oscuro .alerta {
@@ -475,44 +506,14 @@ html.oscuro .alerta strong {
 }
 
 html.oscuro .alerta.peligro {
-  background: rgba(248, 113, 113, 0.12);
+  background: rgb(244 63 94 / 0.12);
 }
 
 html.oscuro .alerta.aviso {
-  background: rgba(96, 165, 250, 0.12);
-  border-color: #60a5fa;
+  background: rgb(249 115 22 / 0.12);
 }
 
 html.oscuro .alerta.info {
-  background: rgba(56, 189, 248, 0.1);
-}
-
-.banner-foto {
-  position: absolute;
-  inset: 0;
-  background-size: cover;
-  background-position: right center;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
-  mask-image: linear-gradient(90deg, transparent 0%, #000 55%);
-}
-
-.banner-foto::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, rgba(29, 78, 216, 0.95) 0%, rgba(29, 78, 216, 0.75) 100%);
-}
-
-@media (min-width: 768px) {
-  .banner-foto {
-    left: auto;
-    width: 58%;
-    -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
-    mask-image: linear-gradient(90deg, transparent 0%, #000 40%);
-  }
-
-  .banner-foto::after {
-    background: linear-gradient(90deg, #1d4ed8 0%, rgba(29, 78, 216, 0.85) 35%, rgba(29, 78, 216, 0.2) 100%);
-  }
+  background: color-mix(in oklab, var(--marca-600) 14%, transparent);
 }
 </style>

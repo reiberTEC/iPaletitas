@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Check, Cloud, MonitorSmartphone, Receipt, ShieldCheck, X } from '@lucide/vue'
+import { Check, X } from '@lucide/vue'
 import FlujoEncabezado from './FlujoEncabezado.vue'
-import PaletaIcon from './icons/PaletaIcon.vue'
 import TarjetaPlan from './planes/TarjetaPlan.vue'
 import SelectorCiclo from './planes/SelectorCiclo.vue'
-import UiBadge from './ui/Badge.vue'
-import { DIAS_PRUEBA, PLANES, acentoPlan, elegirPlan, estado, type CicloPago, type Plan } from '@/stores/negocio'
+import { DIAS_COBRO, DIAS_GARANTIA, PLANES, acentoPlan, elegirPlan, estado, type CicloPago, type Plan } from '@/stores/negocio'
 import { tema } from '@/lib/tema'
 
 const emit = defineEmits(['elegido', 'volver'])
 
 const ciclo = ref<CicloPago>(estado.planElegido?.ciclo ?? estado.licencia?.ciclo ?? 'mensual')
-const cambiando = computed(() => Boolean(estado.sesion && estado.licencia))
+const cambiando = computed(() => Boolean(estado.sesion && estado.licencia && !estado.licencia.cancelada))
+const conSemanaGratis = !estado.pruebaUsada
 
 function elegir(plan: Plan) {
   elegirPlan(plan.id, ciclo.value)
@@ -38,21 +37,18 @@ const comparativa = computed<{ etiqueta: string; valores: (string | boolean)[] }
   { etiqueta: 'Soporte', valores: ['Correo', 'Chat', 'Prioritario', '24/7'] },
 ])
 
-const incluidas = [
-  { icono: MonitorSmartphone, texto: 'Web en computadora, tablet y teléfono' },
-  { icono: Cloud, texto: 'Tus datos en la nube y en local' },
-  { icono: Receipt, texto: 'Tickets de venta al instante' },
-  { icono: ShieldCheck, texto: 'Acceso con usuario y contraseña' },
-]
-
 const preguntas = [
   {
     p: '¿Puedo cambiar de plan después?',
     r: 'Sí. Desde "Suscripciones", dentro del sistema, subes o bajas de plan cuando lo necesites.',
   },
   {
-    p: '¿Qué pasa al terminar la prueba?',
-    r: `Tienes ${DIAS_PRUEBA} días para usar todo sin costo. Antes de que termine, un asesor te contacta para formalizar tu suscripción.`,
+    p: '¿Cómo funciona la semana gratis?',
+    r: `Pagas tu primer periodo con tarjeta al elegir tu plan. Si en los primeros ${DIAS_GARANTIA} días el servicio no te convence, pides tu devolución desde "Mi licencia" y te regresamos el pago completo. Es una sola vez por cuenta.`,
+  },
+  {
+    p: '¿Cómo se pagan las renovaciones?',
+    r: `Se cobran solas a la tarjeta que registraste. Si el cobro no pasa, tienes ${DIAS_COBRO} días para pagar con otra tarjeta o por transferencia antes de que se suspenda.`,
   },
   {
     p: '¿Hay plazos forzosos?',
@@ -62,57 +58,52 @@ const preguntas = [
 </script>
 
 <template>
-  <div class="ip-fondo min-h-screen w-full font-sans text-slate-900">
+  <div class="ip-fondo min-h-svh w-full font-sans text-slate-900">
     <FlujoEncabezado :paso="2" @volver="$emit('volver')" />
 
-    <main class="mx-auto w-full max-w-7xl px-5 py-14 sm:px-6 lg:py-20">
-      <section class="mx-auto max-w-2xl text-center">
-        <UiBadge variant="blue" class="mb-5">
-          <PaletaIcon variant="gold" :size="14" />
-          {{ cambiando ? 'Cambia tu suscripción' : 'Paso 2 de 3 · Tu suscripción' }}
-        </UiBadge>
-        <h1 class="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-          <span v-if="estado.sesion && !cambiando" class="block text-blue-600">
-            ¡Bienvenido, {{ estado.sesion.nombre }}!
-          </span>
-          Suscripciones
+    <main class="mx-auto w-full max-w-7xl px-5 pt-12 pb-20 sm:px-6 lg:pt-16">
+      <section class="max-w-3xl">
+        <h1 class="font-display text-[clamp(2.25rem,5vw,3.5rem)] leading-[1.02] font-extrabold tracking-[-0.03em] text-balance">
+          <template v-if="cambiando">Cambia de línea cuando quieras</template>
+          <template v-else-if="estado.sesion">¡Hola, {{ estado.sesion.nombre }}! Elige tu línea.</template>
+          <template v-else>Elige tu línea</template>
         </h1>
-        <p class="mt-5 text-lg leading-8 text-slate-500">
-          Elige el plan que mejor le queda a tu paletería. Todos incluyen {{ DIAS_PRUEBA }} días de prueba sin costo y
-          puedes cambiarlo cuando quieras.
+        <p class="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
+          Elige el plan que mejor le queda a tu negocio y cámbialo cuando quieras.
+          <template v-if="!cambiando && conSemanaGratis">
+            Lo pagas con tarjeta en el siguiente paso y tienes una semana gratis: si no te convence en
+            {{ DIAS_GARANTIA }} días, te devolvemos tu dinero.
+          </template>
         </p>
 
         <SelectorCiclo v-model="ciclo" class="mt-8" />
       </section>
 
-      <section class="grid grid-cols-1 gap-x-6 gap-y-[150px] pt-[150px] sm:grid-cols-2 xl:grid-cols-4">
+      <section class="lineas" aria-labelledby="titulo-lineas">
+        <h2 id="titulo-lineas" class="sr-only">Planes</h2>
         <TarjetaPlan
           v-for="plan in PLANES"
           :key="plan.id"
           :plan="plan"
           :ciclo="ciclo"
+          escalonado
           :actual="cambiando && estado.licencia?.planId === plan.id"
           :texto-boton="cambiando ? 'Cambiar a este plan' : 'Elegir plan'"
           @elegir="elegir"
         />
       </section>
 
-      <p class="mt-8 text-center text-sm text-slate-500">
-        Precios en pesos mexicanos con IVA incluido. {{ DIAS_PRUEBA }} días gratis, sin tarjeta y sin plazos forzosos.
+      <p class="mt-8 max-w-3xl text-base leading-7 text-slate-600">
+        Todos funcionan en computadora, tablet y teléfono, guardan tus datos en la nube y en local, y dan ticket al
+        instante. Precios en pesos mexicanos con IVA incluido y sin plazos forzosos: pagas con tarjeta, las renovaciones
+        se cobran solas y tu primera semana es gratis (si no te convence, te devolvemos tu pago).
       </p>
 
-      <section class="mt-16 grid gap-4 rounded-3xl bg-white/80 p-6 ring-1 ring-slate-200 sm:grid-cols-2 lg:grid-cols-4">
-        <div v-for="item in incluidas" :key="item.texto" class="flex items-center gap-3">
-          <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-blue-600/10 text-blue-600">
-            <component :is="item.icono" class="size-5" />
-          </span>
-          <p class="text-sm font-semibold text-slate-700">{{ item.texto }}</p>
-        </div>
-      </section>
-
       <section class="mt-20">
-        <h2 class="text-center text-3xl font-extrabold tracking-tight">Compara los planes</h2>
-        <div class="mt-8 overflow-x-auto rounded-3xl bg-white ring-1 ring-slate-200">
+        <h2 class="font-display text-[clamp(1.75rem,3vw,2.5rem)] leading-tight font-extrabold tracking-[-0.03em]">
+          Compara los planes
+        </h2>
+        <div class="mt-8 overflow-x-auto rounded-2xl bg-white">
           <table class="ip-table min-w-[640px]">
             <thead>
               <tr>
@@ -126,8 +117,8 @@ const preguntas = [
               <tr v-for="fila in comparativa" :key="fila.etiqueta">
                 <td class="font-semibold text-slate-700">{{ fila.etiqueta }}</td>
                 <td v-for="(valor, i) in fila.valores" :key="i" class="text-center">
-                  <Check v-if="valor === true" class="mx-auto size-5 text-emerald-500" />
-                  <X v-else-if="valor === false" class="mx-auto size-5 text-slate-300" />
+                  <Check v-if="valor === true" class="mx-auto size-5 text-emerald-600" aria-label="Incluido" />
+                  <X v-else-if="valor === false" class="mx-auto size-5 text-slate-300" aria-label="No incluido" />
                   <span v-else class="font-medium">{{ valor }}</span>
                 </td>
               </tr>
@@ -136,12 +127,61 @@ const preguntas = [
         </div>
       </section>
 
-      <section class="mt-20 grid gap-6 lg:grid-cols-3">
-        <article v-for="item in preguntas" :key="item.p" class="rounded-3xl bg-white/80 p-7 ring-1 ring-slate-200">
-          <h3 class="font-extrabold">{{ item.p }}</h3>
-          <p class="mt-3 text-sm leading-6 text-slate-500">{{ item.r }}</p>
-        </article>
+      <section class="mt-20" aria-labelledby="titulo-dudas">
+        <h2 id="titulo-dudas" class="font-display text-[clamp(1.75rem,3vw,2.5rem)] leading-tight font-extrabold tracking-[-0.03em]">
+          Antes de elegir
+        </h2>
+        <dl class="dudas">
+          <div v-for="item in preguntas" :key="item.p" class="duda">
+            <dt class="font-display text-lg font-bold">{{ item.p }}</dt>
+            <dd class="text-base leading-7 text-slate-600">{{ item.r }}</dd>
+          </div>
+        </dl>
       </section>
     </main>
   </div>
 </template>
+
+<style scoped>
+.lineas {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .lineas {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+
+@media (min-width: 1280px) {
+  .lineas {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dudas {
+  margin: 2rem 0 0;
+}
+
+.duda {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1.5rem 0;
+  border-top: 2px solid #dfe3ea;
+}
+
+.duda dd {
+  margin: 0;
+  max-width: 62ch;
+}
+
+@media (min-width: 900px) {
+  .duda {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 2rem;
+  }
+}
+</style>

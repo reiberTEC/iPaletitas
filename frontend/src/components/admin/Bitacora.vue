@@ -15,7 +15,8 @@ const eventos = computed(() => {
 
 function color(accion: string) {
   if (/suspend/i.test(accion)) return 'bg-rose-500'
-  if (/pago|suscripci/i.test(accion)) return 'bg-emerald-500'
+  if (/cargo/i.test(accion)) return 'bg-amber-400'
+  if (/pago|reactiv/i.test(accion)) return 'bg-emerald-500'
   if (/sesi/i.test(accion)) return 'bg-slate-400'
   return 'bg-blue-500'
 }

@@ -31,11 +31,16 @@ export function nombreDesdeCorreo(correo: string, respaldo = 'Usuario') {
   return limpio ? limpio.replace(/\b\w/g, (letra) => letra.toUpperCase()) : respaldo
 }
 
+const UNIONES = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e'])
+const letras = new Intl.Segmenter('es-MX', { granularity: 'grapheme' })
+const primeraLetra = (palabra: string) => letras.segment(palabra)[Symbol.iterator]().next().value?.segment ?? ''
+
+/** "Paletería de la Esquina" → "PE": primera y última palabra, sin "de", "la"… */
 export function iniciales(nombre: string) {
-  return nombre
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((parte) => parte[0]?.toUpperCase() ?? '')
-    .join('')
+  const palabras = nombre.split(/\s+/).filter((p) => p && !UNIONES.has(p.toLowerCase()))
+  const elegidas = palabras.length > 1 ? [palabras[0]!, palabras[palabras.length - 1]!] : palabras
+  return elegidas.map((p) => primeraLetra(p).toUpperCase()).join('') || '·'
 }
+
+export const plural = (cantidad: number, singular: string, varios: string) =>
+  `${cantidad.toLocaleString('es-MX')} ${cantidad === 1 ? singular : varios}`

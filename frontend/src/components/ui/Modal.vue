@@ -16,20 +16,20 @@ onBeforeUnmount(() => window.removeEventListener('keydown', alTeclear))
 <template>
   <Teleport to="body">
     <div
-      class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 p-4 font-sans backdrop-blur-sm"
+      class="ip-velo fixed inset-0 z-[60] flex items-center justify-center overscroll-contain bg-slate-950/45 p-4 font-sans"
       @click.self="emit('cerrar')"
     >
       <div
-        :class="['max-h-[90vh] w-full overflow-y-auto rounded-3xl bg-white shadow-2xl', ancho ?? 'max-w-lg']"
+        :class="['ip-modal max-h-[90dvh] w-full overflow-y-auto overscroll-contain rounded-2xl bg-white', ancho ?? 'max-w-lg']"
         role="dialog"
         aria-modal="true"
         :aria-label="titulo"
       >
         <header class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 class="text-lg font-extrabold text-slate-900">{{ titulo }}</h2>
+          <h2 class="font-display text-lg font-semibold text-slate-900">{{ titulo }}</h2>
           <button
             type="button"
-            class="grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-500 hover:bg-slate-100"
+            class="ip-boton grid size-9 cursor-pointer place-items-center rounded-xl border-0 bg-transparent text-slate-500 hover:bg-slate-100"
             aria-label="Cerrar"
             @click="emit('cerrar')"
           >
@@ -43,3 +43,37 @@ onBeforeUnmount(() => window.removeEventListener('keydown', alTeclear))
     </div>
   </Teleport>
 </template>
+
+<style scoped>
+.ip-velo {
+  transition: opacity 250ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.ip-modal {
+  box-shadow:
+    0 24px 48px -12px rgb(15 23 42 / 0.28),
+    0 2px 6px rgb(15 23 42 / 0.08);
+  transition:
+    opacity 250ms var(--ease-out),
+    transform 250ms var(--ease-out);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ip-modal {
+    transition: opacity 200ms ease;
+
+    @starting-style {
+      transform: none;
+    }
+  }
+}
+</style>

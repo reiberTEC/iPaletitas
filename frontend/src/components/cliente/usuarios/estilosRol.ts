@@ -16,13 +16,13 @@ export const estiloRol: Record<Rol, { icono: LucideIcon; avatar: string; etiquet
   },
   Cajero: {
     icono: ShoppingCart,
-    avatar: 'bg-emerald-600',
+    avatar: 'bg-emerald-700',
     etiqueta: 'bg-emerald-100 text-emerald-700',
     tarjeta: 'bg-emerald-50 ring-emerald-500 text-emerald-700',
   },
   Almacén: {
     icono: Truck,
-    avatar: 'bg-orange-500',
+    avatar: 'bg-orange-700',
     etiqueta: 'bg-orange-100 text-orange-700',
     tarjeta: 'bg-orange-50 ring-orange-500 text-orange-700',
   },

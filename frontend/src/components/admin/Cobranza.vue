@@ -1,20 +1,31 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { Banknote, HandCoins, Search, TriangleAlert } from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
-import UiModal from '../ui/Modal.vue'
 import Encabezado from '../ui/Encabezado.vue'
 import EstadoBadge from './EstadoBadge.vue'
-import { estado, metricas, registrarPago, type EstadoPago, type MetodoCobro, type Pago } from '@/stores/admin'
-import { dinero, fecha } from '@/lib/formato'
+import ModalPago from './ModalPago.vue'
+import { DIAS_COBRO } from '@/stores/catalogo'
+import {
+  diasPara,
+  estado,
+  metricas,
+  porCobrar,
+  registrarPago,
+  vencimientoAlPagar,
+  type EstadoPago,
+  type Pago,
+} from '@/stores/admin'
+import { dinero, fecha, plural } from '@/lib/formato'
 
 defineEmits<{ verCuenta: [id: string] }>()
 
 const filtro = ref<'Todos' | EstadoPago>('Todos')
 const busqueda = ref('')
 const cobrando = ref<Pago | null>(null)
-const metodo = ref<MetodoCobro>('Transferencia')
+const aviso = ref('')
+let temporizador: ReturnType<typeof setTimeout> | undefined
 
 const lista = computed(() => {
   const texto = busqueda.value.trim().toLowerCase()
@@ -26,16 +37,24 @@ const lista = computed(() => {
 
 const conteo = (valor: EstadoPago) => estado.pagos.filter((p) => p.estado === valor).length
 
-function abrirCobro(pago: Pago) {
-  cobrando.value = pago
-  metodo.value = 'Transferencia'
+function confirmar(referencia: string) {
+  const pago = cobrando.value
+  if (!pago) return
+  const vence = registrarPago(pago.id, referencia)
+  cobrando.value = null
+  aviso.value = vence
+    ? `Pago de ${pago.negocio} registrado. Su licencia queda activa hasta el ${fecha(vence)}.`
+    : `Pago de ${pago.negocio} registrado.`
+  clearTimeout(temporizador)
+  temporizador = setTimeout(() => (aviso.value = ''), 4000)
 }
 
-function confirmar() {
-  if (!cobrando.value) return
-  registrarPago(cobrando.value.id, metodo.value)
-  cobrando.value = null
+function plazo(pago: Pago) {
+  const dias = diasPara(pago.limite)
+  return dias <= 0 ? 'Vence hoy' : `${plural(dias, 'día', 'días')} para pagar`
 }
+
+onBeforeUnmount(() => clearTimeout(temporizador))
 </script>
 
 <template>
@@ -66,16 +85,22 @@ function confirmar() {
       </UiCard>
     </div>
 
-    <p class="mb-6 rounded-2xl bg-blue-50 px-5 py-4 text-sm text-blue-900 ring-1 ring-blue-100">
-      iPaletitas no se conecta con bancos: cuando el cliente paga por transferencia, depósito o en efectivo, registra aquí el
-      pago para mantener su licencia al corriente.
-    </p>
+    <div class="mb-6 space-y-1 rounded-2xl bg-blue-50 px-5 py-4 text-sm text-blue-900 ring-1 ring-blue-100">
+      <p>
+        <strong>Solo recibimos transferencias.</strong> iPaletitas no se conecta con bancos: cuando confirmes la transferencia
+        del cliente, regístrala aquí y su licencia se renueva un periodo.
+      </p>
+      <p>
+        El cargo se genera el día que vence la licencia. El cliente sigue entrando {{ DIAS_COBRO }} días para pagar; si llega la
+        fecha límite sin pago, su licencia se suspende hasta que lo registres.
+      </p>
+    </div>
 
     <UiCard class="overflow-hidden bg-white">
       <div class="flex flex-col gap-4 border-b border-slate-100 p-4 lg:flex-row lg:items-center">
         <div class="flex flex-wrap gap-2">
           <button
-            v-for="opcion in (['Todos', 'Pendiente', 'Vencido', 'Pagado'] as const)"
+            v-for="opcion in (['Todos', 'Pendiente', 'Vencido', 'Pagado', 'Reembolsado'] as const)"
             :key="opcion"
             type="button"
             :class="[
@@ -125,11 +150,15 @@ function confirmar() {
               <td class="whitespace-nowrap">{{ fecha(pago.limite) }}</td>
               <td>
                 <EstadoBadge :estado="pago.estado" />
-                <p v-if="pago.metodo" class="mt-1 text-xs text-slate-400">{{ pago.metodo }}</p>
+                <p v-if="!porCobrar(pago) && pago.metodo" class="mt-1 text-xs [overflow-wrap:anywhere] text-slate-400">
+                  {{ pago.metodo }}<template v-if="pago.referencia"> · {{ pago.referencia }}</template>
+                </p>
+                <p v-else-if="pago.estado === 'Pendiente'" class="mt-1 text-xs whitespace-nowrap text-amber-800">{{ plazo(pago) }}</p>
+                <p v-else-if="pago.periodo" class="mt-1 text-xs whitespace-nowrap text-rose-600">Licencia suspendida</p>
               </td>
               <td class="text-right font-bold text-slate-900">{{ dinero(pago.monto) }}</td>
               <td class="text-right">
-                <UiButton v-if="pago.estado !== 'Pagado'" size="sm" class="whitespace-nowrap" @click="abrirCobro(pago)">Registrar pago</UiButton>
+                <UiButton v-if="porCobrar(pago)" size="sm" class="whitespace-nowrap" @click="cobrando = pago">Registrar pago</UiButton>
                 <span v-else class="text-xs whitespace-nowrap text-slate-400">{{ pago.pagadoEl ? fecha(pago.pagadoEl) : '' }}</span>
               </td>
             </tr>
@@ -141,31 +170,16 @@ function confirmar() {
       </div>
     </UiCard>
 
-    <UiModal v-if="cobrando" titulo="Registrar pago" @cerrar="cobrando = null">
-      <div class="rounded-2xl bg-slate-50 p-4">
-        <p class="text-sm text-slate-500">F-{{ cobrando.folio }} · {{ cobrando.negocio }}</p>
-        <p class="mt-1 font-semibold">{{ cobrando.concepto }}</p>
-        <p class="mt-3 text-3xl font-extrabold">{{ dinero(cobrando.monto) }}</p>
-      </div>
-      <p class="ip-label mt-5">¿Cómo pagó el cliente?</p>
-      <div class="grid grid-cols-3 gap-2">
-        <button
-          v-for="opcion in (['Transferencia', 'Depósito', 'Efectivo'] as const)"
-          :key="opcion"
-          type="button"
-          :class="[
-            'cursor-pointer rounded-xl border-0 py-3 text-sm font-semibold transition',
-            metodo === opcion ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:ring-blue-300',
-          ]"
-          @click="metodo = opcion"
-        >
-          {{ opcion }}
-        </button>
-      </div>
-      <div class="mt-6 flex justify-end gap-3">
-        <UiButton variant="outline" @click="cobrando = null">Cancelar</UiButton>
-        <UiButton @click="confirmar">Confirmar pago</UiButton>
-      </div>
-    </UiModal>
+    <ModalPago
+      v-if="cobrando"
+      :cargo="cobrando"
+      :vence-nuevo="vencimientoAlPagar(cobrando.cuentaId)"
+      @confirmar="confirmar"
+      @cerrar="cobrando = null"
+    />
+
+    <Transition name="aviso">
+      <div v-if="aviso" role="status" class="ip-aviso">{{ aviso }}</div>
+    </Transition>
   </div>
 </template>

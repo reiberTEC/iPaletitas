@@ -5,8 +5,13 @@ import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
+// El asistente con IA corre aparte (npm run asistente); si no está prendido, el chat contesta con su base local.
+const proxyAsistente = { '/api': 'http://127.0.0.1:8787' }
+
 // https://vite.dev/config/
 export default defineConfig({
+  server: { proxy: proxyAsistente },
+  preview: { proxy: proxyAsistente },
   plugins: [
     vue(),
     vueDevTools(),

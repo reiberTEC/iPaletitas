@@ -1,25 +1,22 @@
 /* Modo oscuro para estilos propios (fuera de Tailwind): sistema, Home, ChatBot, Login y registro. */
 
 html.oscuro body {
-  background: #05070c;
+  background: #0b0f17;
   color: #e2e8f0;
 }
 
 /* Paletas: el amarillo de los palitos y de la paleta dorada pasa a azul */
 html.oscuro [fill='#FCD34D' i] {
-  fill: #60a5fa;
+  fill: var(--marca-400);
 }
 
 html.oscuro [fill='#B45309' i] {
-  fill: #1e3a8a;
+  fill: var(--marca-900);
 }
 
 /* Clases del sistema */
 html.oscuro .ip-fondo {
-  background:
-    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.22), transparent 60%),
-    radial-gradient(700px 380px at 90% 8%, rgba(29, 78, 216, 0.18), transparent 55%),
-    #05070c;
+  background: #0b0f17;
 }
 
 html.oscuro .ip-label {
@@ -33,9 +30,9 @@ html.oscuro .ip-input {
 }
 
 html.oscuro .ip-input:focus {
-  border-color: #3b82f6;
+  border-color: var(--marca-500);
   background: #080b12;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--marca-500) 20%, transparent);
 }
 
 html.oscuro .ip-input::placeholder {
@@ -43,7 +40,7 @@ html.oscuro .ip-input::placeholder {
 }
 
 html.oscuro .ip-check {
-  accent-color: #3b82f6;
+  accent-color: var(--marca-500);
 }
 
 html.oscuro .ip-table th {
@@ -56,85 +53,329 @@ html.oscuro .ip-table td {
   color: #cbd5e1;
 }
 
-html.oscuro .ip-table tbody tr:hover {
-  background: #131a28;
+@media (hover: hover) and (pointer: fine) {
+  html.oscuro .ip-table tbody tr:hover {
+    background: color-mix(in oklab, var(--marca-900) 22%, #131a26);
+  }
+}
+
+html.oscuro .ip-picto {
+  background: var(--marca-500);
+}
+
+html.oscuro .ip-tira {
+  border-color: #1f2a3d;
+  background: #1f2a3d;
+}
+
+html.oscuro .ip-tira > * {
+  background: #131a26;
+}
+
+html.oscuro .ip-aviso {
+  background: #1f2a3d;
+  box-shadow:
+    inset 0 0 0 1px #2b3950,
+    0 12px 32px -12px rgb(0 0 0 / 0.6);
 }
 
 html.oscuro .ip-pestana-activa {
-  background: #2563eb;
+  background: var(--marca-600);
   color: #fff;
 }
 
-/* Home */
-html.oscuro .nav-link {
-  color: #cbd5e1;
+/* Home: los campos de color bajan un tono para no deslumbrar de noche; el amarillo pasa a la línea */
+html.oscuro .home {
+  --suelo: #0b0f17;
+  --suelo-2: #0b0f17;
+  --tinta: #f1f5f9;
+  --tinta-2: #a3b1c6;
 }
 
-html.oscuro .nav-link:hover {
-  background: rgba(59, 130, 246, 0.12);
-  color: #93c5fd;
+html.oscuro .home .hero {
+  background: var(--marca-800);
 }
 
-html.oscuro .social-btn {
-  background: rgba(15, 21, 34, 0.85);
-  box-shadow: inset 0 0 0 1px #1f2a3d;
-  color: #cbd5e1;
-}
-
-html.oscuro .social-btn:hover {
-  background: var(--brand);
-  color: #fff;
-}
-
-html.oscuro .home-mesh {
-  background:
-    radial-gradient(900px 420px at 12% -10%, rgba(37, 99, 235, 0.24), transparent 60%),
-    radial-gradient(700px 380px at 90% 8%, rgba(29, 78, 216, 0.2), transparent 55%),
-    radial-gradient(600px 400px at 70% 90%, rgba(59, 130, 246, 0.08), transparent 50%);
-}
-
-html.oscuro .home-grid {
-  background-image:
-    linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
-}
-
-/* ChatBot */
-html.oscuro .chat-chip {
-  border-color: #1e3a8a;
-  background: rgba(37, 99, 235, 0.14);
-  color: #93c5fd;
-}
-
-html.oscuro .chat-chip:hover {
-  background: rgba(37, 99, 235, 0.26);
-}
-
-html.oscuro .chat-input {
-  border-color: #1f2a3d;
-  background: #080b12;
+html.oscuro .home .pieza,
+html.oscuro .home .ticket,
+html.oscuro .home .producto {
+  background: #131a26;
   color: #f1f5f9;
 }
 
-html.oscuro .chat-teaser {
-  border-color: #1f2a3d;
+html.oscuro .home .estacion-libre {
+  background: #131a26;
+}
+
+html.oscuro .home .prueba-error {
+  background: #2a1219;
+  color: #fda4af;
+}
+
+html.oscuro .home .cobro {
+  --campo: var(--marca-900);
+  --tinta-campo: #fff;
+}
+
+html.oscuro .home .cobro.cobrado {
+  --campo: #064e3b;
+}
+
+html.oscuro .home .cobro-paletas {
+  opacity: 0.28;
+}
+
+html.oscuro .home .ticket-sub,
+html.oscuro .home .ticket-cant,
+html.oscuro .home .ticket-pie {
+  color: #a3b1c6;
+}
+
+html.oscuro .home .ticket-lineas {
+  border-color: #2b3950;
+}
+
+html.oscuro .home .vida-0 {
   background: #0f1522;
+  color: #f1f5f9;
+}
+
+html.oscuro .home .vida-1 {
+  background: var(--marca-950);
+  color: #f1f5f9;
+}
+
+html.oscuro .home .vida-2 {
+  background: var(--marca-800);
+}
+
+html.oscuro .home .vida-3 {
+  background: var(--marca-600);
+}
+
+html.oscuro .home .estado-nuevo {
+  background: color-mix(in oklab, var(--marca-600) 25%, transparent);
+  color: var(--marca-200);
+}
+
+html.oscuro .home .estado-ok {
+  background: rgb(16 185 129 / 0.18);
+  color: #6ee7b7;
+}
+
+html.oscuro .home .estado-poco {
+  background: color-mix(in oklab, var(--marca-500) 22%, transparent);
+  color: var(--marca-200);
+}
+
+html.oscuro .home .medidor {
+  background: #263042;
+}
+
+html.oscuro .home .medidor span {
+  background: var(--marca-400);
+}
+
+html.oscuro .home .medidor .bajo {
+  background: var(--marca-200);
+}
+
+html.oscuro .home .pregunta:nth-child(even) {
+  background: #121a28;
+}
+
+html.oscuro .home .preguntas-cabeza {
+  background: color-mix(in oklab, var(--marca-950) 70%, #000);
+}
+
+html.oscuro .home .cierre {
+  background: var(--marca-800);
+}
+
+html.oscuro .home .ofrece {
+  background: #0f1522;
+}
+
+html.oscuro .home .estacion-punto {
+  background: #0f1522;
+  color: var(--marca-300);
+}
+
+html.oscuro .home :is(.historial, .tu-marca) {
+  background: color-mix(in oklab, var(--marca-950) 55%, #0b0f17);
+}
+
+html.oscuro .home :is(.historial-panel, .tu-marca-vista) {
+  background: #131a26;
+  color: #f1f5f9;
+  box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.7);
+}
+
+html.oscuro .home .periodos {
+  background: #1c2536;
+}
+
+html.oscuro .home .periodo {
   color: #cbd5e1;
 }
 
-html.oscuro .launcher-dot {
-  border-color: #05070c;
-  background: #60a5fa;
+html.oscuro .home .periodo[aria-pressed='true'] {
+  background: var(--marca-500);
+  color: #fff;
+}
+
+html.oscuro .home .grafica-etiqueta {
+  color: #94a3b8;
+}
+
+html.oscuro .home .top-medidor {
+  background: #263042;
+}
+
+html.oscuro .home .sabor {
+  background: #131a26;
+  color: #f1f5f9;
+  box-shadow: inset 0 0 0 1px #2b3950;
+}
+
+html.oscuro .home .sabor[aria-pressed='true'] {
+  outline-color: var(--marca-400);
+}
+
+/* ChatBot */
+html.oscuro .chat-ventana {
+  background: #131a26;
+  box-shadow: 0 24px 48px -16px rgb(0 0 0 / 0.7);
+}
+
+html.oscuro .chat-cabeza {
+  background: var(--marca-700);
+}
+
+html.oscuro .chat-lista {
+  background: #0b0f17;
+}
+
+html.oscuro .chat-burbuja-bot {
+  background: #182132;
+  color: #dbe3ee;
+}
+
+html.oscuro .chat-sugerencias,
+html.oscuro .chat-forma {
+  background: #131a26;
+}
+
+html.oscuro .chat-chip {
+  background: color-mix(in oklab, var(--marca-600) 18%, transparent);
+  color: var(--marca-200);
+}
+
+html.oscuro .chat-input {
+  border-color: #263042;
+  background: #0b0f17;
+  color: #f1f5f9;
+}
+
+html.oscuro .chat-input:focus {
+  border-color: var(--marca-400);
+  background: #0b0f17;
+}
+
+html.oscuro .chat-teaser {
+  border-color: var(--marca-400);
+  background: #131a26;
+  color: #f1f5f9;
+}
+
+html.oscuro .chat-launcher {
+  outline-color: #0b0f17;
+}
+
+html.oscuro .chat-accion {
+  border-color: color-mix(in oklab, var(--marca-500) 45%, #131a26);
+  background: #131a26;
+  color: var(--marca-200);
 }
 
 html.oscuro .typing i {
   background: #64748b;
 }
 
-/* Login y registro (Login.css no se modifica) */
-html.oscuro .login-container,
-html.oscuro .right-panel {
-  background-color: #05070c;
+@media (hover: hover) and (pointer: fine) {
+  html.oscuro .chat-chip:hover {
+    background: color-mix(in oklab, var(--marca-600) 30%, transparent);
+  }
+
+  html.oscuro .chat-accion:hover {
+    border-color: var(--marca-400);
+    background: #182132;
+  }
+
+  html.oscuro .chat-teaser:hover {
+    background: #182132;
+  }
+}
+
+/* Flujo de alta: encabezado con estaciones, planes y activación */
+html.oscuro .flujo {
+  background: #131a26;
+}
+
+html.oscuro .flujo .estacion + .estacion::before,
+html.oscuro .flujo .estacion-punto {
+  border-color: #33405a;
+  background: #33405a;
+}
+
+html.oscuro .flujo .estacion-punto {
+  background: #131a26;
+}
+
+html.oscuro .flujo .estacion.hecha + .estacion::before {
+  background: var(--marca-500);
+}
+
+html.oscuro .flujo .hecha .estacion-punto {
+  border-color: var(--marca-500);
+  background: var(--marca-500);
+}
+
+html.oscuro .flujo .actual .estacion-punto {
+  border-color: var(--marca-400);
+}
+
+html.oscuro .flujo .estacion-nombre,
+html.oscuro .flujo .flujo-movil {
+  color: #a3b1c6;
+}
+
+html.oscuro .flujo .actual .estacion-nombre,
+html.oscuro .flujo .flujo-movil strong {
+  color: #f1f5f9;
+}
+
+html.oscuro .duda {
+  border-color: #263042;
+}
+
+html.oscuro .exito-sello {
+  border-color: #0b0f17;
+}
+
+/* Login y registro */
+html.oscuro .login-container {
+  background: #0b0f17;
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container .portada-marca {
+  background: #0b0f17;
+  color: #f1f5f9;
+}
+
+html.oscuro .login-container .portada-letrero {
+  background: var(--marca-700);
 }
 
 html.oscuro .login-container .title {
@@ -143,7 +384,7 @@ html.oscuro .login-container .title {
 
 html.oscuro .login-container .subtitle,
 html.oscuro .login-container .link-register {
-  color: #8a97ab;
+  color: #a3b1c6;
 }
 
 html.oscuro .login-container .input-group label {
@@ -151,38 +392,48 @@ html.oscuro .login-container .input-group label {
 }
 
 html.oscuro .login-container input:not([type='checkbox']) {
-  border-color: #1f2a3d;
-  background-color: #0f1522;
+  border-color: #263042;
+  background-color: #131a26;
   color: #f1f5f9;
 }
 
 html.oscuro .login-container input:not([type='checkbox']):focus {
-  border-color: #3b82f6;
-  background-color: #0f1522;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+  border-color: var(--marca-400);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--marca-400) 25%, transparent);
 }
 
 html.oscuro .login-container .btn-eye {
-  color: #8a97ab;
-}
-
-html.oscuro .login-container .btn-eye:hover {
-  color: #f1f5f9;
+  color: #a3b1c6;
 }
 
 html.oscuro .login-container .link-forgot,
 html.oscuro .login-container .link-register a {
-  color: #60a5fa;
+  color: var(--marca-300);
 }
 
 html.oscuro .login-container .admin-opcion {
-  border-color: #1f2a3d;
-  background: #0f1522;
+  border-color: #263042;
+  background: #131a26;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  html.oscuro .login-container .btn-eye:hover {
+    color: #f1f5f9;
+  }
+
+  html.oscuro .login-container .portada-marca:hover {
+    background: #131a26;
+  }
+
+  html.oscuro .login-container .link-forgot:hover,
+  html.oscuro .login-container .link-register a:hover {
+    color: var(--marca-200);
+  }
 }
 
 html.oscuro .login-container .admin-opcion--activa {
-  border-color: #3b82f6;
-  background: rgba(37, 99, 235, 0.15);
+  border-color: var(--marca-500);
+  background: color-mix(in oklab, var(--marca-600) 15%, transparent);
 }
 
 html.oscuro .login-container .admin-texto strong {

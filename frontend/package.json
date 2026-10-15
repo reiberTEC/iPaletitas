@@ -5,15 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "asistente": "node --env-file-if-exists=servidor/.env.local servidor/asistente.mjs",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build"
   },
   "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/unbounded": "^5.3.0",
     "@lucide/vue": "^1.48.0",
     "@tailwindcss/vite": "^4.3.3",
     "chart.js": "^4.5.1",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.7.0",
     "tailwindcss": "^4.3.3",

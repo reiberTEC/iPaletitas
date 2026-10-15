@@ -16,7 +16,7 @@ function detalle(plan: Plan) {
   const delPlan = cuentas.value.filter((c) => c.planId === plan.id)
   return {
     activas: delPlan.filter((c) => estadoDe(c) === 'Activa').length,
-    prueba: delPlan.filter((c) => estadoDe(c) === 'Prueba').length,
+    prueba: delPlan.filter((c) => estadoDe(c) === 'En prueba').length,
     anuales: delPlan.filter((c) => c.ciclo === 'anual').length,
   }
 }
