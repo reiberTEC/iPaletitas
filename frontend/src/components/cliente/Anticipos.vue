@@ -41,9 +41,9 @@ function elegir(venta: Venta) {
   recibido.value = null
 }
 
-function cobrar() {
+async function cobrar() {
   if (!seleccionada.value || !puedeCobrar.value) return
-  const venta = abonarAnticipo(seleccionada.value.id, monto.value ?? 0, metodo.value, recibido.value ?? 0)
+  const venta = await abonarAnticipo(seleccionada.value.id, monto.value ?? 0, metodo.value, recibido.value ?? 0)
   seleccionada.value = null
   if (venta) emit('abonado', venta)
 }

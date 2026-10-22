@@ -49,9 +49,9 @@ const vigencia = computed(() => {
     : `${dias} para renovar`
 })
 
-function confirmar() {
+async function confirmar() {
   if (!seleccionado.value || !puedeCambiar.value) return
-  cambiarPlan(seleccionado.value.id, ciclo.value)
+  await cambiarPlan(seleccionado.value.id, ciclo.value)
   aviso.value = `¡Listo! Ahora tienes el plan ${seleccionado.value.nombre}.`
   clearTimeout(temporizador)
   temporizador = setTimeout(() => (aviso.value = ''), 3000)

@@ -175,8 +175,8 @@ function autorizarBilletera() {
   completar(registrarBilletera(billetera.value, correoBilletera.value))
 }
 
-function completar(tarjeta: TarjetaRegistrada) {
-  activarLicencia({
+async function completar(tarjeta: TarjetaRegistrada) {
+  await activarLicencia({
     negocio: form.negocio.trim(),
     giro: form.giro,
     telefono: form.telefono.trim(),

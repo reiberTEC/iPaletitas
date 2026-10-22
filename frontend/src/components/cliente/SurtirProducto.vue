@@ -22,9 +22,9 @@ const form = reactive({
 const proveedores = computed(() => [...new Set(estado.entradas.map((e) => e.proveedor).filter(Boolean))])
 const quedaran = computed(() => actual + (form.cantidad || 0))
 
-function guardar() {
+async function guardar() {
   if (!form.cantidad || form.cantidad < 1) return
-  registrarEntrada({
+  await registrarEntrada({
     productoId: props.producto.id,
     cantidad: form.cantidad,
     costoUnitario: form.costoUnitario,

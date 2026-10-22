@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  CalendarClock,
   Package,
   PackagePlus,
   Palette,
@@ -25,6 +26,7 @@ import Inicio from './Inicio.vue'
 import PuntoVenta from './PuntoVenta.vue'
 import Productos from './Productos.vue'
 import Entradas from './Entradas.vue'
+import Caducados from './Caducados.vue'
 import Historial from './Historial.vue'
 import Usuarios from './Usuarios.vue'
 import Sucursales from './Sucursales.vue'
@@ -43,6 +45,7 @@ import {
   semanaGratis,
   accesoRevocado,
   agotados,
+  caducados,
   cambiarSucursal,
   diasRestantes,
   enPrueba,
@@ -50,6 +53,7 @@ import {
   plazoDeCobro,
   planActual,
   porAcabarse,
+  porCaducar,
   puede,
   sesionEsTitular,
   sucursalActiva,
@@ -78,6 +82,7 @@ const grupos: { titulo: string; pestanas: Pestana[] }[] = [
       { id: 'inicio', etiqueta: 'Inicio', icono: LayoutDashboard, vista: Inicio },
       { id: 'productos', etiqueta: 'Productos', icono: Package, vista: Productos },
       { id: 'entradas', etiqueta: 'Entradas', icono: PackagePlus, vista: Entradas },
+      { id: 'caducados', etiqueta: 'Caducados', icono: CalendarClock, vista: Caducados },
       { id: 'historial', etiqueta: 'Historial de ventas', icono: ReceiptText, vista: Historial },
     ],
   },
@@ -106,6 +111,9 @@ const gruposVisibles = computed(() =>
 const puedeVender = computed(() => puedeVer('venta'))
 const alertasStock = computed(() =>
   puedeVer('productos') ? agotados.value.length + porAcabarse.value.length : 0,
+)
+const alertasCaducidad = computed(() =>
+  puedeVer('caducados') ? caducados.value.length + porCaducar.value.length : 0,
 )
 const descripcionSesion = computed(() =>
   sesionEsTitular.value
@@ -185,29 +193,19 @@ let observador: ResizeObserver | null = null
 
 const transicion = ref<InstanceType<typeof TransicionBillete> | null>(null)
 let vendiendo = false
-// "Nueva venta" se toca decenas de veces al día: el billete solo sale en la primera de la sesión.
-let billeteVisto = sessionStorage.getItem('ipaletitas:billete') === '1'
-watch(
-  () => activa.value === 'venta',
-  (enVenta) => {
-    if (!enVenta) return
-    billeteVisto = true
-    sessionStorage.setItem('ipaletitas:billete', '1')
-  },
-)
 
 async function irAVender() {
   if (vendiendo || !puedeVender.value) return
   menuAbierto.value = false
 
+  // Si ya estás en caja, no repite la animación; si prefieres menos movimiento, salta al POS.
   const sinAnimacion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (sinAnimacion || billeteVisto || !transicion.value || activa.value === 'venta') {
+  if (sinAnimacion || !transicion.value || activa.value === 'venta') {
     ir('venta')
     return
   }
 
   vendiendo = true
-  billeteVisto = true
   try {
     await transicion.value.cubrir()
     ir('venta')
@@ -234,7 +232,7 @@ function alCambiarPaso(paso: PasoTutorial) {
 function cerrarTutorial() {
   pasosRecorrido.value = null
   menuAbierto.value = false
-  terminarTutorial()
+  void terminarTutorial()
 }
 
 function venderDesdeTutorial() {
@@ -282,7 +280,7 @@ function datosAyuda(): DatosPanel {
 }
 
 function alCambiarSucursal(evento: Event) {
-  cambiarSucursal((evento.target as HTMLSelectElement).value)
+  void cambiarSucursal((evento.target as HTMLSelectElement).value)
 }
 
 const botonMenu = ref<HTMLButtonElement | null>(null)
@@ -431,6 +429,16 @@ onBeforeUnmount(() => {
               :title="`${agotados.length} agotados · ${porAcabarse.length} por acabarse`"
             >
               {{ alertasStock }}
+            </span>
+            <span
+              v-else-if="pestana.id === 'caducados' && alertasCaducidad"
+              :class="[
+                'ml-auto grid min-w-5 shrink-0 place-items-center rounded-md px-1.5 text-[11px] leading-5 font-bold tabular-nums text-white',
+                caducados.length ? 'bg-rose-600' : 'bg-orange-700',
+              ]"
+              :title="`${caducados.length} caducados · ${porCaducar.length} por caducar`"
+            >
+              {{ alertasCaducidad }}
             </span>
           </button>
         </div>

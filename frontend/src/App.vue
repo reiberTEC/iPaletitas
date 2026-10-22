@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import Home from './components/Home.vue'
 import Login from './components/Login.vue'
 import VistaNewCount from './components/VistaNewCount.vue'
@@ -9,7 +9,8 @@ import PanelCliente from './components/cliente/PanelCliente.vue'
 import CuentaBloqueada from './components/cliente/CuentaBloqueada.vue'
 import PanelAdmin from './components/admin/PanelAdmin.vue'
 import TemaToggle from './components/ui/TemaToggle.vue'
-import { bloqueo, cerrarSesion, estado, iniciarSesion } from './stores/negocio'
+import { guardarToken, leerToken } from './lib/api'
+import { bloqueo, cerrarSesion, estado, iniciarSesion, sincronizarDesdeApi } from './stores/negocio'
 import { cerrarSesionAdmin, esCorreoAdmin, estado as admin, iniciarSesionAdmin } from './stores/admin'
 
 type Vista = 'home' | 'login' | 'registro' | 'planes' | 'activacion' | 'cliente' | 'admin'
@@ -21,6 +22,7 @@ function vistaInicial(): Vista {
 }
 
 const vistaActual = ref<Vista>(vistaInicial())
+const cargandoSesion = ref(false)
 
 const puedeVerAdmin = computed(() => Boolean(admin.sesion && esCorreoAdmin(admin.sesion.correo)))
 const clienteConLicencia = computed(() => Boolean(estado.sesion && estado.licencia))
@@ -36,33 +38,64 @@ function registrarse() {
   ir('planes')
 }
 
-function ingresar(correo: string, comoAdmin: boolean) {
+async function ingresar(correo: string, comoAdmin: boolean) {
   if (comoAdmin) {
     iniciarSesionAdmin(correo)
     ir('admin')
     return
   }
   iniciarSesion(correo)
+  cargandoSesion.value = true
+  try {
+    await sincronizarDesdeApi()
+  } catch {
+    // Si la API falla, se queda con lo local.
+  } finally {
+    cargandoSesion.value = false
+  }
   ir(estado.licencia ? 'cliente' : 'planes')
 }
 
 function salirCliente() {
+  guardarToken(null)
   cerrarSesion()
   ir('home')
 }
 
 function cambiarCuenta() {
+  guardarToken(null)
   cerrarSesion()
   ir('login')
 }
 
 function salirAdmin() {
+  guardarToken(null)
   cerrarSesionAdmin()
   ir('home')
 }
+
+onMounted(async () => {
+  if (!leerToken() || admin.sesion) return
+  cargandoSesion.value = true
+  try {
+    await sincronizarDesdeApi()
+    if (estado.sesion) ir(estado.licencia ? 'cliente' : 'planes')
+  } catch {
+    guardarToken(null)
+  } finally {
+    cargandoSesion.value = false
+  }
+})
 </script>
 
 <template>
+  <div
+    v-if="cargandoSesion"
+    class="fixed inset-0 z-[100] grid place-items-center bg-slate-950/40 text-white backdrop-blur-sm"
+  >
+    <p class="font-display text-lg font-semibold">Cargando tu negocio…</p>
+  </div>
+
   <Home v-if="vistaActual === 'home'" @irLogin="ir('login')" @irRegistro="ir('registro')" />
 
   <Login

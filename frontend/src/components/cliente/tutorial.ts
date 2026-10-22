@@ -74,6 +74,15 @@ export function pasosTutorial(): PasoTutorial[] {
         'Cuando te llegue producto, regístralo aquí: se suma a tus existencias y queda guardado el costo y el proveedor.',
     },
     {
+      id: 'caducados',
+      objetivo: 'estacion-caducados',
+      seccion: 'caducados',
+      enMenu: true,
+      titulo: 'Caducados y pérdidas',
+      texto:
+        'Si algo se caducó o se echó a perder, aquí lo bajas del inventario: queda registrado como pérdida con su costo.',
+    },
+    {
       id: 'historial',
       objetivo: 'estacion-historial',
       seccion: 'historial',

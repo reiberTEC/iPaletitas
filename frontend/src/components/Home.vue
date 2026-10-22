@@ -18,6 +18,7 @@ import {
 } from '@lucide/vue'
 import PaletaIcon from './icons/PaletaIcon.vue'
 import ChatBot from './ChatBot.vue'
+import InstalarApp from './InstalarApp.vue'
 import RedesSociales from './RedesSociales.vue'
 import TarjetaPlan from './planes/TarjetaPlan.vue'
 import SelectorCiclo from './planes/SelectorCiclo.vue'
@@ -54,6 +55,11 @@ const modulos = [
     nombre: 'Entradas',
     texto: 'Registra la mercancía que llega, con proveedor y costo; el inventario se actualiza solo.',
     icono: PackagePlus,
+  },
+  {
+    nombre: 'Caducados',
+    texto: 'Lo que se venció o se echó a perder se baja del inventario y queda como pérdida.',
+    icono: TriangleAlert,
   },
   {
     nombre: 'Historial de ventas',
@@ -291,8 +297,12 @@ const preguntas = [
     r: 'No. A cada uno le das un rol (Administrador, Gerente, Cajero o Almacén) y permisos por módulo. El cajero, por ejemplo, cobra y consulta, pero no ve usuarios, sucursales ni tu licencia.',
   },
   {
+    p: '¿Cómo la descargo o instalo?',
+    r: 'Es una aplicación instalable. En Windows, Android o Mac con Chrome/Edge usa “Instalar iPaletitas” (o el botón en Descargar). En iPhone: Compartir → Añadir a pantalla de inicio. Queda como app a pantalla completa, no como una pestaña más del navegador.',
+  },
+  {
     p: '¿Funciona en celular o tablet?',
-    r: 'Sí. Es una página web: entras desde la computadora del mostrador, una tablet o tu teléfono, sin instalar nada.',
+    r: 'Sí. Está pensada para escritorio (caja), tableta (mostrador) y móvil (consulta rápida). La instalas en cada dispositivo y usas la misma cuenta.',
   },
   {
     p: '¿Cómo funciona la semana gratis?',
@@ -354,6 +364,7 @@ function subir() {
           <a href="#ofrece">Qué ofrece</a>
           <a href="#historial">Historial</a>
           <a href="#planes">Planes</a>
+          <a href="#descargar">Descargar</a>
           <a href="#preguntas">Preguntas</a>
         </nav>
         <div class="flex items-center gap-1">
@@ -368,8 +379,8 @@ function subir() {
           <span class="renglon"><span style="--i: 1">y mira tus ventas.</span></span>
         </h1>
         <p class="hero-frase entra" style="--i: 2">
-          Punto de venta, inventario, entradas, historial de ventas, anticipos, usuarios y sucursales en un solo sistema
-          para tu paletería, tienda o cafetería.
+          Aplicación de punto de venta e inventario para tu mostrador: cobra, surte, baja caducados y mira tus ventas en
+          la computadora, la tablet o el celular.
         </p>
         <div class="hero-accion entra" style="--i: 3">
           <button type="button" class="accion ip-boton" @click="emit('irRegistro')">
@@ -765,6 +776,8 @@ function subir() {
       </section>
 
       <!-- Preguntas: una banda por pregunta, todas las respuestas a la vista -->
+      <InstalarApp />
+
       <section id="preguntas" class="preguntas" aria-labelledby="titulo-preguntas">
         <div class="preguntas-cabeza">
           <h2 id="titulo-preguntas" class="font-display" data-revela>Antes de empezar</h2>
@@ -785,7 +798,7 @@ function subir() {
           <PaletaIcon variant="white" :size="26" />
           <span class="font-display">iPaletitas</span>
         </a>
-        <p>Punto de venta e inventario para comercios de mostrador en México. Precios en pesos, IVA incluido.</p>
+        <p>Aplicación de punto de venta e inventario para comercios de mostrador en México. Precios en pesos, IVA incluido.</p>
         <a href="#" class="cierre-subir" @click.prevent="subir">
           <ArrowUp class="size-4" aria-hidden="true" />
           Volver arriba
@@ -804,6 +817,7 @@ function subir() {
           <nav class="flex flex-wrap gap-x-6 gap-y-2" aria-label="Pie de página">
             <button type="button" @click="emit('irLogin')">Iniciar sesión</button>
             <a href="#planes">Planes</a>
+            <a href="#descargar">Descargar</a>
             <a href="#preguntas">Preguntas</a>
           </nav>
           <RedesSociales solo-icono aria-label="Redes sociales de iPaletitas" />

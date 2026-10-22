@@ -3,34 +3,42 @@ import { ref } from 'vue'
 import { Eye, EyeOff } from '@lucide/vue'
 import PortadaAcceso from './acceso/PortadaAcceso.vue'
 import paliSaludando from '@/assets/Img/pali-saludando.webp'
+import { ErrorApi, guardarToken, loginApi } from '@/lib/api'
 import { DOMINIO_ADMIN, esCorreoAdmin } from '@/stores/admin'
-import { validarIngreso } from '@/stores/negocio'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const comoAdmin = ref(false)
 const error = ref('')
+const cargando = ref(false)
 
 const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-// Declaramos los eventos para avisarle a App.vue que cambie de pantalla
-const emit = defineEmits(['irRegistro', 'irHome', 'ingresar'])
+const emit = defineEmits<{
+  irRegistro: []
+  irHome: []
+  ingresar: [correo: string, comoAdmin: boolean]
+}>()
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (comoAdmin.value && !esCorreoAdmin(email.value)) {
     error.value = `Esta cuenta no tiene permisos de administrador. Usa un correo ${DOMINIO_ADMIN}.`
     return
   }
-  const sinAcceso = comoAdmin.value ? null : validarIngreso(email.value)
-  if (sinAcceso) {
-    error.value = sinAcceso
-    return
-  }
+  cargando.value = true
   error.value = ''
-  emit('ingresar', email.value, comoAdmin.value)
+  try {
+    const sesion = await loginApi(email.value, password.value, comoAdmin.value)
+    guardarToken(sesion.token)
+    emit('ingresar', sesion.usuario.correo, sesion.tipo === 'staff')
+  } catch (e) {
+    error.value = e instanceof ErrorApi ? e.message : 'No se pudo iniciar sesión.'
+  } finally {
+    cargando.value = false
+  }
 }
 </script>
 
@@ -59,6 +67,7 @@ const handleLogin = () => {
               inputmode="email"
               placeholder="ejemplo@correo.com"
               required
+              :disabled="cargando"
               @input="error = ''"
             />
           </div>
@@ -73,6 +82,7 @@ const handleLogin = () => {
                 autocomplete="current-password"
                 placeholder="Tu contraseña"
                 required
+                :disabled="cargando"
               />
               <button
                 type="button"
@@ -88,7 +98,7 @@ const handleLogin = () => {
           </div>
 
           <label class="admin-opcion" :class="{ 'admin-opcion--activa': comoAdmin }">
-            <input v-model="comoAdmin" type="checkbox" @change="error = ''" />
+            <input v-model="comoAdmin" type="checkbox" :disabled="cargando" @change="error = ''" />
             <span class="admin-texto">
               <strong>Entrar como administrador</strong>
               <small>Solo personal de iPaletitas ({{ DOMINIO_ADMIN }})</small>
@@ -97,8 +107,8 @@ const handleLogin = () => {
 
           <p v-if="error" class="login-error" role="alert">{{ error }}</p>
 
-          <button type="submit" class="btn-primary ip-boton">
-            {{ comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}
+          <button type="submit" class="btn-primary ip-boton" :disabled="cargando">
+            {{ cargando ? 'Entrando…' : comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}
           </button>
         </form>
 

@@ -79,14 +79,14 @@ function quitarLogo() {
   sugeridos.value = []
 }
 
-function guardar() {
-  guardarMarca({ logo: logo.value, color: color.value === COLOR_IPALETITAS ? null : color.value })
+async function guardar() {
+  await guardarMarca({ logo: logo.value, color: color.value === COLOR_IPALETITAS ? null : color.value })
   guardado.value = true
   setTimeout(() => (guardado.value = false), 2200)
 }
 
-function restablecer() {
-  quitarMarca()
+async function restablecer() {
+  await quitarMarca()
   logo.value = null
   color.value = COLOR_IPALETITAS
   sugeridos.value = []

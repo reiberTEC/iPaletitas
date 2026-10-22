@@ -104,9 +104,9 @@ function vaciar() {
   anticipo.value = null
 }
 
-function cobrar() {
+async function cobrar() {
   if (!puedeCobrar.value) return
-  ventaHecha.value = registrarVenta(
+  ventaHecha.value = await registrarVenta(
     carrito.value.map((l) => ({ ...l })),
     metodo.value,
     recibido.value ?? aCobrar.value,

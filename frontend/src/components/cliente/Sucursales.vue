@@ -41,8 +41,8 @@ function abrir() {
   modalAbierto.value = true
 }
 
-function guardar() {
-  crearSucursal({ ...form })
+async function guardar() {
+  await crearSucursal({ ...form })
   modalAbierto.value = false
 }
 </script>
@@ -86,7 +86,7 @@ function guardar() {
           v-if="!sucursalFija && sucursal.id !== sucursalActiva?.id"
           variant="outline"
           class="mt-auto w-full"
-          @click="cambiarSucursal(sucursal.id)"
+          @click="void cambiarSucursal(sucursal.id)"
         >
           Trabajar en esta sucursal
         </UiButton>

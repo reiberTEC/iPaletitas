@@ -38,6 +38,7 @@ const ETIQUETAS: Record<Seccion, string> = {
   venta: 'Punto de venta',
   productos: 'Productos',
   entradas: 'Entradas',
+  caducados: 'Caducados',
   historial: 'Historial de ventas',
   usuarios: 'Usuarios',
   sucursales: 'Sucursales',
@@ -260,6 +261,14 @@ const TEMAS: Tema[] = [
     texto: () =>
       'En Entradas registra lo que te llegó: producto, cantidad, costo y proveedor. Se suma a tus existencias al guardar.',
     acciones: ['ir:entradas'],
+  },
+  {
+    contexto: 'panel',
+    claves: ['caduc', 'vencid', 'perdida', 'pérdida', 'merma', 'descompos', 'echar a perder', 'tirar'],
+    texto: () =>
+      'En Caducados ves lo que ya venció o está por vencer. Ahí lo pasas a pérdida: se baja del inventario y queda el costo registrado.',
+    acciones: ['ir:caducados'],
+    sugerencias: ['¿Cómo agrego la fecha de caducidad?', '¿Cómo hago una venta?'],
   },
   {
     contexto: 'panel',

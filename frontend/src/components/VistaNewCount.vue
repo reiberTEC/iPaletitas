@@ -3,24 +3,45 @@ import { ref } from 'vue'
 import { Eye, EyeOff } from '@lucide/vue'
 import PortadaAcceso from './acceso/PortadaAcceso.vue'
 import paliPulgar from '@/assets/Img/pali-pulgar.webp'
+import { ErrorApi, guardarToken, registrarApi } from '@/lib/api'
 import { DIAS_GARANTIA } from '@/stores/catalogo'
-import { registrarCuenta } from '@/stores/negocio'
+import { iniciarSesion, registrarCuenta, sincronizarDesdeApi } from '@/stores/negocio'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const error = ref('')
+const cargando = ref(false)
 
 const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
-// Eventos para regresar al Login o avisar que la cuenta se creó
-const emit = defineEmits(['irLogin', 'irHome', 'registrado'])
+const emit = defineEmits<{
+  irLogin: []
+  irHome: []
+  registrado: []
+}>()
 
-const handleRegister = () => {
-  error.value = registrarCuenta(email.value) ?? ''
-  if (!error.value) emit('registrado')
+const handleRegister = async () => {
+  cargando.value = true
+  error.value = ''
+  try {
+    const sesion = await registrarApi(email.value, password.value)
+    guardarToken(sesion.token)
+    const local = registrarCuenta(sesion.usuario.correo)
+    if (local) iniciarSesion(sesion.usuario.correo)
+    try {
+      await sincronizarDesdeApi()
+    } catch {
+      /* local ya quedó listo */
+    }
+    emit('registrado')
+  } catch (e) {
+    error.value = e instanceof ErrorApi ? e.message : 'No se pudo crear la cuenta.'
+  } finally {
+    cargando.value = false
+  }
 }
 </script>
 
@@ -52,6 +73,7 @@ const handleRegister = () => {
               inputmode="email"
               placeholder="ejemplo@correo.com"
               required
+              :disabled="cargando"
               @input="error = ''"
             />
           </div>
@@ -64,8 +86,10 @@ const handleRegister = () => {
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 autocomplete="new-password"
-                placeholder="Crea una contraseña"
+                placeholder="Mínimo 8 caracteres"
                 required
+                minlength="8"
+                :disabled="cargando"
               />
               <button
                 type="button"
@@ -85,7 +109,9 @@ const handleRegister = () => {
             <a href="#" @click.prevent="emit('irLogin')">Iniciar sesión</a>
           </p>
 
-          <button type="submit" class="btn-primary ip-boton">Crear cuenta</button>
+          <button type="submit" class="btn-primary ip-boton" :disabled="cargando">
+            {{ cargando ? 'Creando…' : 'Crear cuenta' }}
+          </button>
         </form>
 
         <div class="links">

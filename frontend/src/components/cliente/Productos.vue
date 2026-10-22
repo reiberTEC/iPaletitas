@@ -37,7 +37,16 @@ const editando = ref<Producto | null>(null)
 const surtiendo = ref<Producto | null>(null)
 const confirmacion = ref('')
 let temporizador = 0
-const form = reactive({ sku: '', nombre: '', categoria: '', precio: 0, costo: 0, stockMinimo: 10, existenciaInicial: 0 })
+const form = reactive({
+  sku: '',
+  nombre: '',
+  categoria: '',
+  precio: 0,
+  costo: 0,
+  stockMinimo: 10,
+  caducidad: '',
+  existenciaInicial: 0,
+})
 
 const categorias = computed(() => [...new Set(estado.productos.map((p) => p.categoria))])
 
@@ -79,6 +88,7 @@ function abrirNuevo() {
     precio: 0,
     costo: 0,
     stockMinimo: 10,
+    caducidad: '',
     existenciaInicial: 0,
   })
   modalAbierto.value = true
@@ -86,20 +96,29 @@ function abrirNuevo() {
 
 function abrirEditar(producto: Producto) {
   editando.value = producto
-  const { sku, nombre, categoria, precio, costo, stockMinimo } = producto
-  Object.assign(form, { sku, nombre, categoria, precio, costo, stockMinimo, existenciaInicial: 0 })
+  const { sku, nombre, categoria, precio, costo, stockMinimo, caducidad } = producto
+  Object.assign(form, {
+    sku,
+    nombre,
+    categoria,
+    precio,
+    costo,
+    stockMinimo,
+    caducidad: caducidad ?? '',
+    existenciaInicial: 0,
+  })
   modalAbierto.value = true
 }
 
-function guardar() {
+async function guardar() {
   const { existenciaInicial, ...datos } = form
-  if (editando.value) actualizarProducto(editando.value.id, datos)
-  else crearProducto({ ...datos, existenciaInicial })
+  if (editando.value) await actualizarProducto(editando.value.id, datos)
+  else await crearProducto({ ...datos, existenciaInicial })
   modalAbierto.value = false
 }
 
-function eliminar(producto: Producto) {
-  if (confirm(`¿Eliminar "${producto.nombre}" del catálogo?`)) eliminarProducto(producto.id)
+async function eliminar(producto: Producto) {
+  if (confirm(`¿Eliminar "${producto.nombre}" del catálogo?`)) await eliminarProducto(producto.id)
 }
 </script>
 
@@ -367,6 +386,10 @@ function eliminar(producto: Producto) {
         <div>
           <label class="ip-label" for="p-minimo">Stock mínimo</label>
           <input id="p-minimo" v-model.number="form.stockMinimo" type="number" min="0" class="ip-input" required />
+        </div>
+        <div>
+          <label class="ip-label" for="p-caducidad">Caducidad (opcional)</label>
+          <input id="p-caducidad" v-model="form.caducidad" type="date" class="ip-input" />
         </div>
         <div v-if="!editando">
           <label class="ip-label" for="p-inicial">Existencia inicial</label>

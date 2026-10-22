@@ -37,8 +37,8 @@ const unidades = computed(() => delMes.value.reduce((suma, e) => suma + e.cantid
 const inversion = computed(() => delMes.value.reduce((suma, e) => suma + e.cantidad * e.costoUnitario, 0))
 const proveedores = computed(() => [...new Set(estado.entradas.map((e) => e.proveedor).filter(Boolean))])
 
-function registrar() {
-  registrarEntrada({ ...form })
+async function registrar() {
+  await registrarEntrada({ ...form })
   exito.value = true
   form.cantidad = 1
   form.nota = ''

@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { CircleCheck, CirclePause, Eye, Pencil, Search, ShieldCheck, Trash, UserPlus, Users } from '@lucide/vue'
+import {
+  CircleCheck,
+  CirclePause,
+  Eye,
+  Pencil,
+  Search,
+  ShieldCheck,
+  Trash,
+  UserPlus,
+  UserRoundPlus,
+  Users,
+} from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import UiModal from '../ui/Modal.vue'
@@ -21,6 +32,7 @@ import {
   nombreSucursal,
   puede,
   puedeAgregar,
+  reactivarUsuario,
   sesionEsTitular,
   resumenUso,
   type DatosUsuario,
@@ -35,42 +47,46 @@ const totalPermisos = TODOS_LOS_PERMISOS.length
 
 const busqueda = ref('')
 const filtroRol = ref<Rol | ''>('')
-const filtroEstado = ref<'' | 'activo' | 'inactivo'>('')
+
+const activos = computed(() => estado.usuarios.filter((u) => u.activo))
+const bajas = computed(() => estado.usuarios.filter((u) => !u.activo))
 
 const filtrados = computed(() => {
   const texto = busqueda.value.trim().toLowerCase()
-  return estado.usuarios.filter((u) => {
+  return activos.value.filter((u) => {
     const coincideTexto =
       !texto ||
       u.nombre.toLowerCase().includes(texto) ||
       u.correo.toLowerCase().includes(texto) ||
       u.puesto.toLowerCase().includes(texto)
     const coincideRol = !filtroRol.value || u.rol === filtroRol.value
-    const coincideEstado = !filtroEstado.value || (filtroEstado.value === 'activo') === u.activo
-    return coincideTexto && coincideRol && coincideEstado
+    return coincideTexto && coincideRol
   })
 })
 
-const hayFiltros = computed(() => !!(busqueda.value || filtroRol.value || filtroEstado.value))
+const hayFiltros = computed(() => !!(busqueda.value || filtroRol.value))
 
 function limpiarFiltros() {
   busqueda.value = ''
   filtroRol.value = ''
-  filtroEstado.value = ''
 }
 
 const indicadores = computed(() => {
-  const total = estado.usuarios.length
-  const activos = estado.usuarios.filter((u) => u.activo).length
+  const equipo = activos.value.length
+  const admins = activos.value.filter((u) => u.rol === 'Administrador').length
   return [
-    { titulo: 'Equipo total', valor: total, detalle: resumenUso('usuarios'), icono: Users },
-    { titulo: 'Activos', valor: activos, detalle: `${total ? Math.round((activos / total) * 100) : 0}% del equipo`, icono: CircleCheck },
-    { titulo: 'Inactivos', valor: total - activos, detalle: 'Sin acceso a la plataforma', icono: CirclePause },
+    { titulo: 'Equipo total', valor: equipo, detalle: resumenUso('usuarios'), icono: Users },
     {
       titulo: 'Administradores',
-      valor: estado.usuarios.filter((u) => u.rol === 'Administrador').length,
+      valor: admins,
       detalle: 'Con acceso total',
       icono: ShieldCheck,
+    },
+    {
+      titulo: 'Bajas',
+      valor: bajas.value.length,
+      detalle: 'Despidos, renuncias u otras salidas',
+      icono: CirclePause,
     },
   ]
 })
@@ -99,30 +115,40 @@ function abrirEdicion(usuario: Usuario, pestana: PestanaUsuario = 'datos') {
   formulario.value = { usuario, pestana }
 }
 
-function guardar(datos: DatosUsuario) {
+async function guardar(datos: DatosUsuario) {
   const editando = formulario.value?.usuario
   if (editando) {
-    actualizarUsuario(editando.id, datos)
+    await actualizarUsuario(editando.id, datos)
     notificar(`Se actualizó a ${datos.nombre}.`)
   } else {
-    crearUsuario(datos)
+    await crearUsuario(datos)
     notificar(`${datos.nombre} se agregó al equipo.`)
   }
   formulario.value = null
 }
 
-function confirmarEliminacion() {
+async function confirmarEliminacion() {
   if (!porEliminar.value) return
-  eliminarUsuario(porEliminar.value.id)
-  notificar(`Se eliminó a ${porEliminar.value.nombre}.`)
+  const nombre = porEliminar.value.nombre
+  await eliminarUsuario(porEliminar.value.id)
+  notificar(`${nombre} pasó a bajas. El cupo del plan quedó libre.`)
   porEliminar.value = null
+}
+
+async function reincorporar(usuario: Usuario) {
+  if (!puedeAgregar('usuarios')) {
+    notificar('No hay cupo en el plan. Mejora el plan o da de baja a alguien del equipo.')
+    return
+  }
+  await reactivarUsuario(usuario.id)
+  notificar(`${usuario.nombre} volvió al equipo.`)
 }
 
 const puedeEditar = (usuario: Usuario) => puede('usuarios.editar') && (!esTitular(usuario) || sesionEsTitular.value)
 
 function motivoNoEliminar(usuario: Usuario) {
-  if (esTitular(usuario)) return 'No se puede eliminar al titular de la cuenta'
-  if (esSesionActual(usuario)) return 'No puedes eliminar tu propio usuario'
+  if (esTitular(usuario)) return 'No se puede dar de baja al titular de la cuenta'
+  if (esSesionActual(usuario)) return 'No puedes darte de baja a ti mismo'
   return ''
 }
 
@@ -141,7 +167,7 @@ const botonIcono =
 
     <AvisoLimite limite="usuarios" @cambiarPlan="$emit('cambiarPlan')" />
 
-    <div class="ip-tira mb-6 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="ip-tira mb-6 sm:grid-cols-3">
       <div v-for="kpi in indicadores" :key="kpi.titulo" class="p-5">
         <div class="flex items-center justify-between gap-3">
           <p class="text-sm text-slate-500">{{ kpi.titulo }}</p>
@@ -162,11 +188,6 @@ const botonIcono =
         <select v-model="filtroRol" class="ip-input w-auto! cursor-pointer" aria-label="Filtrar por rol">
           <option value="">Todos los roles</option>
           <option v-for="r in ROLES" :key="r.rol" :value="r.rol">{{ r.rol }}</option>
-        </select>
-        <select v-model="filtroEstado" class="ip-input w-auto! cursor-pointer" aria-label="Filtrar por estado">
-          <option value="">Todos los estados</option>
-          <option value="activo">Activos</option>
-          <option value="inactivo">Inactivos</option>
         </select>
         <button
           v-if="hayFiltros"
@@ -236,14 +257,7 @@ const botonIcono =
                 <p class="mt-1 text-xs text-slate-500 tabular-nums">{{ usuario.permisos.length }}/{{ totalPermisos }}</p>
               </td>
               <td>
-                <span
-                  :class="[
-                    'rounded-full px-2.5 py-1 text-xs font-bold',
-                    usuario.activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500',
-                  ]"
-                >
-                  {{ usuario.activo ? 'Activo' : 'Inactivo' }}
-                </span>
+                <span class="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">Activo</span>
               </td>
               <td class="whitespace-nowrap">{{ fechaDia(usuario.fechaIngreso) }}</td>
               <td>
@@ -275,8 +289,8 @@ const botonIcono =
                     v-if="puede('usuarios.eliminar')"
                     type="button"
                     :class="[botonIcono, 'hover:bg-rose-50 hover:text-rose-600']"
-                    :title="motivoNoEliminar(usuario) || 'Eliminar'"
-                    :aria-label="`Eliminar a ${usuario.nombre}`"
+                    :title="motivoNoEliminar(usuario) || 'Dar de baja'"
+                    :aria-label="`Dar de baja a ${usuario.nombre}`"
                     :disabled="!!motivoNoEliminar(usuario)"
                     @click="porEliminar = usuario"
                   >
@@ -289,7 +303,7 @@ const botonIcono =
         </table>
 
         <div v-if="!filtrados.length" class="flex flex-col items-center gap-3 px-4 py-12 text-sm text-slate-500">
-          <p>{{ hayFiltros ? 'Ningún usuario coincide con los filtros.' : 'Aún no hay usuarios registrados.' }}</p>
+          <p>{{ hayFiltros ? 'Ningún usuario coincide con los filtros.' : 'Aún no hay usuarios en el equipo.' }}</p>
           <UiButton v-if="hayFiltros" variant="outline" size="sm" @click="limpiarFiltros">Limpiar filtros</UiButton>
           <UiButton v-else-if="puede('usuarios.crear') && puedeAgregar('usuarios')" size="sm" @click="abrirNuevo">
             <UserPlus class="size-4" />
@@ -298,6 +312,75 @@ const botonIcono =
         </div>
       </div>
     </UiCard>
+
+    <section v-if="bajas.length" class="mt-8">
+      <h2 class="font-display text-lg font-bold text-slate-900">Antiguos usuarios</h2>
+      <p class="mt-1 text-sm text-slate-500">
+        Historial de bajas (despido, renuncia u otra salida). No cuentan en el cupo del plan; puedes reincorporarlos si hay espacio.
+      </p>
+
+      <UiCard class="mt-4 overflow-hidden bg-white">
+        <div class="overflow-x-auto">
+          <table class="ip-table min-w-[720px]">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Puesto</th>
+                <th>Rol</th>
+                <th>Sucursal</th>
+                <th>Ingreso</th>
+                <th class="!text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="usuario in bajas" :key="usuario.id" class="opacity-90">
+                <td>
+                  <div class="flex items-center gap-3">
+                    <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-300 text-sm font-extrabold text-white">
+                      {{ iniciales(usuario.nombre) }}
+                    </span>
+                    <div class="min-w-0 max-w-64">
+                      <p class="font-semibold [overflow-wrap:anywhere] text-slate-700">{{ usuario.nombre }}</p>
+                      <p class="truncate text-xs text-slate-500" :title="usuario.correo">{{ usuario.correo }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-slate-600">{{ usuario.puesto }}</td>
+                <td>
+                  <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{{ usuario.rol }}</span>
+                </td>
+                <td class="whitespace-nowrap text-slate-600">{{ nombreSucursal(usuario.sucursalId) }}</td>
+                <td class="whitespace-nowrap text-slate-600">{{ fechaDia(usuario.fechaIngreso) }}</td>
+                <td>
+                  <div class="flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']"
+                      title="Ver detalle"
+                      :aria-label="`Ver a ${usuario.nombre}`"
+                      @click="detalle = usuario"
+                    >
+                      <Eye class="size-4" />
+                    </button>
+                    <button
+                      v-if="puede('usuarios.editar')"
+                      type="button"
+                      :class="[botonIcono, 'hover:bg-emerald-100 hover:text-emerald-700']"
+                      :title="puedeAgregar('usuarios') ? 'Reincorporar al equipo' : 'Sin cupo en el plan'"
+                      :aria-label="`Reincorporar a ${usuario.nombre}`"
+                      :disabled="!puedeAgregar('usuarios')"
+                      @click="reincorporar(usuario)"
+                    >
+                      <UserRoundPlus class="size-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </UiCard>
+    </section>
 
     <ModalUsuario
       v-if="formulario"
@@ -310,22 +393,22 @@ const botonIcono =
     <DetalleUsuario
       v-if="detalle"
       :usuario="detalle"
-      :editable="puedeEditar(detalle)"
+      :editable="detalle.activo && puedeEditar(detalle)"
       @cerrar="detalle = null"
       @editar="abrirEdicion(detalle!)"
       @permisos="abrirEdicion(detalle!, 'permisos')"
     />
 
-    <UiModal v-if="porEliminar" titulo="Eliminar usuario" ancho="max-w-md" @cerrar="porEliminar = null">
+    <UiModal v-if="porEliminar" titulo="Dar de baja" ancho="max-w-md" @cerrar="porEliminar = null">
       <p class="text-sm leading-6 text-slate-600">
-        ¿Seguro que quieres eliminar a <strong class="text-slate-900">{{ porEliminar.nombre }}</strong>? Perderá el acceso a la
-        plataforma y esta acción no se puede deshacer.
+        ¿Dar de baja a <strong class="text-slate-900">{{ porEliminar.nombre }}</strong>? Perderá el acceso, quedará en
+        <strong class="text-slate-900">Antiguos usuarios</strong> y se liberará un lugar del plan.
       </p>
       <div class="mt-6 flex justify-end gap-3">
         <UiButton variant="outline" @click="porEliminar = null">Cancelar</UiButton>
         <UiButton class="bg-rose-600 hover:bg-rose-700" @click="confirmarEliminacion">
           <Trash class="size-4" />
-          Eliminar
+          Dar de baja
         </UiButton>
       </div>
     </UiModal>

@@ -12,6 +12,29 @@ import {
   type Limite,
   type PlanId,
 } from './catalogo'
+import {
+  abonarAnticipoApi,
+  activarLicenciaApi,
+  actualizarProductoApi,
+  actualizarUsuarioApi,
+  cambiarPlanApi,
+  cambiarSucursalApi,
+  crearProductoApi,
+  crearSucursalApi,
+  crearUsuarioApi,
+  eliminarProductoApi,
+  eliminarUsuarioApi,
+  guardarMarcaApi,
+  reactivarUsuarioApi,
+  leerToken,
+  obtenerNegocioApi,
+  quitarMarcaApi,
+  registrarEntradaApi,
+  registrarPerdidaApi,
+  registrarVentaApi,
+  terminarTutorialApi,
+  type SnapshotNegocio,
+} from '@/lib/api'
 import { nombreDesdeCorreo } from '@/lib/formato'
 import { ahora } from '@/lib/reloj'
 import type { TarjetaRegistrada } from '@/lib/tarjeta'
@@ -35,6 +58,7 @@ export const MODULOS = [
   { id: 'ventas', nombre: 'Punto de venta' },
   { id: 'productos', nombre: 'Productos' },
   { id: 'entradas', nombre: 'Entradas' },
+  { id: 'perdidas', nombre: 'Caducados' },
   { id: 'historial', nombre: 'Historial' },
   { id: 'usuarios', nombre: 'Usuarios' },
   { id: 'sucursales', nombre: 'Sucursales' },
@@ -75,7 +99,24 @@ export interface Producto {
   precio: number
   costo: number
   stockMinimo: number
+  /** Fecha de caducidad (YYYY-MM-DD). Si no hay, no entra a avisos de caducados. */
+  caducidad?: string
   existencias: Record<string, number>
+}
+
+export type MotivoPerdida = 'Caducidad' | 'Daño' | 'Merma' | 'Otro'
+
+export interface Perdida {
+  id: string
+  folio: number
+  fecha: string
+  sucursalId: string
+  productoId: string
+  producto: string
+  cantidad: number
+  costoUnitario: number
+  motivo: MotivoPerdida
+  nota: string
 }
 
 export interface Entrada {
@@ -176,9 +217,11 @@ interface Estado {
   usuarios: Usuario[]
   productos: Producto[]
   entradas: Entrada[]
+  perdidas: Perdida[]
   ventas: Venta[]
   folioVenta: number
   folioEntrada: number
+  folioPerdida: number
 }
 
 export const IVA = 0.16
@@ -202,6 +245,7 @@ export const ROLES: { rol: Rol; descripcion: string; permisos: Permiso[] }[] = [
       'ventas.ver', 'ventas.crear', 'ventas.editar', 'ventas.eliminar',
       'productos.ver', 'productos.crear', 'productos.editar', 'productos.eliminar',
       'entradas.ver', 'entradas.crear', 'entradas.editar', 'entradas.eliminar',
+      'perdidas.ver', 'perdidas.crear', 'perdidas.editar', 'perdidas.eliminar',
       'historial.ver',
       'usuarios.ver', 'usuarios.crear', 'usuarios.editar',
       'sucursales.ver',
@@ -215,8 +259,12 @@ export const ROLES: { rol: Rol; descripcion: string; permisos: Permiso[] }[] = [
   },
   {
     rol: 'Almacén',
-    descripcion: 'Da de alta productos y registra entradas.',
-    permisos: ['productos.ver', 'productos.crear', 'productos.editar', 'entradas.ver', 'entradas.crear', 'entradas.editar'],
+    descripcion: 'Da de alta productos, registra entradas y baja caducados a pérdida.',
+    permisos: [
+      'productos.ver', 'productos.crear', 'productos.editar',
+      'entradas.ver', 'entradas.crear', 'entradas.editar',
+      'perdidas.ver', 'perdidas.crear', 'perdidas.editar',
+    ],
   },
 ]
 
@@ -244,9 +292,11 @@ function estadoVacio(): Estado {
     usuarios: [],
     productos: [],
     entradas: [],
+    perdidas: [],
     ventas: [],
     folioVenta: 1001,
     folioEntrada: 1,
+    folioPerdida: 1,
   }
 }
 
@@ -270,12 +320,25 @@ function cargarOtrosNegocios(): Record<string, DatosNegocio> {
 export const estado = reactive<Estado>(cargar())
 const otrosNegocios = reactive<Record<string, DatosNegocio>>(cargarOtrosNegocios())
 
+// Cuentas guardadas antes de caducados / pérdidas.
+estado.perdidas ??= []
+estado.folioPerdida ??= 1
+
 // Usuarios guardados antes de que existieran puesto, teléfono, fecha de ingreso y permisos.
 for (const usuario of estado.usuarios as Partial<Usuario>[]) {
   usuario.telefono ??= ''
   usuario.puesto ??= usuario.rol ?? 'Cajero'
   usuario.fechaIngreso ??= estado.licencia?.inicio.slice(0, 10) ?? hoy()
   usuario.permisos ??= permisosDeRol(usuario.rol ?? 'Cajero')
+  // Quien ya podía ver o crear entradas también ve Caducados.
+  if (usuario.permisos?.includes('entradas.ver') && !usuario.permisos.includes('perdidas.ver')) {
+    usuario.permisos = ordenarPermisos([
+      ...usuario.permisos,
+      'perdidas.ver',
+      ...(usuario.permisos.includes('entradas.crear') ? (['perdidas.crear', 'perdidas.editar'] as Permiso[]) : []),
+      ...(usuario.permisos.includes('entradas.eliminar') ? (['perdidas.eliminar'] as Permiso[]) : []),
+    ])
+  }
 }
 
 // Antes cualquier sesión era la del dueño: se toma esa (o el primer administrador) como titular.
@@ -292,11 +355,55 @@ if (estado.planElegido) estado.planElegido.planId = migrarPlanId(estado.planEleg
 watch(estado, (valor) => localStorage.setItem(CLAVE_ALMACEN, JSON.stringify(valor)), { deep: true })
 watch(otrosNegocios, (valor) => localStorage.setItem(CLAVE_CUENTAS, JSON.stringify(valor)), { deep: true })
 
-export function guardarMarca(marca: Partial<Marca>) {
-  estado.marca = { ...estado.marca, ...marca }
+/** ¿Hay sesión JWT? El panel escribe en Postgres; si no, cae a localStorage. */
+export const usaApi = () => Boolean(leerToken())
+
+export function aplicarSnapshot(snap: SnapshotNegocio) {
+  const s = snap as Partial<Estado>
+  const sesionPrevia = estado.sesion
+  const sucursalPrevia = estado.sucursalActivaId
+  Object.assign(estado, {
+    titular: s.titular ?? '',
+    licencia: s.licencia ?? null,
+    pruebaUsada: s.pruebaUsada ?? false,
+    tutorialPendiente: s.tutorialPendiente ?? false,
+    marca: s.marca ?? { logo: null, color: null },
+    planElegido: s.planElegido ?? null,
+    sucursales: s.sucursales ?? [],
+    usuarios: s.usuarios ?? [],
+    productos: s.productos ?? [],
+    entradas: s.entradas ?? [],
+    perdidas: s.perdidas ?? [],
+    ventas: s.ventas ?? [],
+    folioVenta: s.folioVenta ?? 1001,
+    folioEntrada: s.folioEntrada ?? 1,
+    folioPerdida: s.folioPerdida ?? 1,
+    sucursalActivaId: s.sucursalActivaId || sucursalPrevia || s.sucursales?.[0]?.id || '',
+    sesion: s.sesion ?? sesionPrevia,
+  })
 }
 
-export function quitarMarca() {
+export async function sincronizarDesdeApi() {
+  if (!usaApi()) return false
+  const snap = await obtenerNegocioApi()
+  aplicarSnapshot(snap)
+  return true
+}
+
+export async function guardarMarca(marca: Partial<Marca>) {
+  const siguiente = { ...estado.marca, ...marca }
+  if (usaApi()) {
+    aplicarSnapshot(await guardarMarcaApi(siguiente))
+    return
+  }
+  estado.marca = siguiente
+}
+
+export async function quitarMarca() {
+  if (usaApi()) {
+    aplicarSnapshot(await quitarMarcaApi())
+    return
+  }
   estado.marca = { logo: null, color: null }
 }
 
@@ -378,11 +485,49 @@ export const porAcabarse = computed(() =>
   estado.productos.filter((p) => estadoStock(p) === 'bajo').sort((a, b) => stock(a) - stock(b)),
 )
 
+/** Días hasta la caducidad (negativo = ya venció). Null si el producto no tiene fecha. */
+export function diasParaCaducar(producto: Producto): number | null {
+  if (!producto.caducidad) return null
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const vence = new Date(`${producto.caducidad}T00:00:00`)
+  return Math.round((vence.getTime() - hoy.getTime()) / 86_400_000)
+}
+
+export type EstadoCaducidad = 'caducado' | 'porCaducar' | 'ok' | 'sinFecha'
+
+/** Por caducar: vence en 7 días o menos y aún tiene existencias. */
+export function estadoCaducidad(producto: Producto): EstadoCaducidad {
+  const dias = diasParaCaducar(producto)
+  if (dias === null) return 'sinFecha'
+  if (dias < 0) return 'caducado'
+  if (dias <= 7) return 'porCaducar'
+  return 'ok'
+}
+
+export const caducados = computed(() =>
+  estado.productos
+    .filter((p) => estadoCaducidad(p) === 'caducado' && stock(p) > 0)
+    .sort((a, b) => (diasParaCaducar(a) ?? 0) - (diasParaCaducar(b) ?? 0)),
+)
+
+export const porCaducar = computed(() =>
+  estado.productos
+    .filter((p) => estadoCaducidad(p) === 'porCaducar' && stock(p) > 0)
+    .sort((a, b) => (diasParaCaducar(a) ?? 0) - (diasParaCaducar(b) ?? 0)),
+)
+
+export const perdidasSucursal = computed(() =>
+  estado.perdidas.filter((p) => p.sucursalId === sucursalActiva.value?.id),
+)
+
 export function nombreSucursal(id: string) {
   return estado.sucursales.find((s) => s.id === id)?.nombre ?? 'Sin sucursal'
 }
 
 export function uso(limite: Limite) {
+  // Solo cuentan usuarios activos: las bajas quedan en historial y liberan cupo del plan.
+  if (limite === 'usuarios') return estado.usuarios.filter((u) => u.activo).length
   return estado[limite].length
 }
 
@@ -473,9 +618,13 @@ export function registrarCuenta(correo: string): string | null {
 
 export function iniciarSesion(correo: string) {
   const limpio = correo.trim().toLowerCase()
-  if (!perteneceA(estado, limpio)) {
-    const negocio = negocioDe(limpio)
-    if (negocio) abrirNegocio(negocio)
+  const negocio = negocioDe(limpio)
+  if (negocio) {
+    if (!perteneceA(estado, limpio)) abrirNegocio(negocio)
+  } else if (!perteneceA(estado, limpio)) {
+    // Cuenta autenticada en la API pero aún sin datos locales en este dispositivo.
+    abrirNegocio(null)
+    estado.titular = limpio
   }
   const usuario = estado.usuarios.find((u) => mismoCorreo(u.correo, limpio))
   estado.sesion = { correo: limpio, nombre: usuario?.nombre ?? nombreDesdeCorreo(limpio, 'Titular') }
@@ -490,7 +639,7 @@ export function elegirPlan(planId: PlanId, ciclo: CicloPago) {
   estado.planElegido = { planId, ciclo }
 }
 
-export function activarLicencia(datos: {
+export async function activarLicencia(datos: {
   negocio: string
   giro: string
   telefono: string
@@ -499,6 +648,19 @@ export function activarLicencia(datos: {
   facturacion: Facturacion
 }) {
   const eleccion = estado.planElegido ?? { planId: PLAN_RECOMENDADO, ciclo: 'mensual' as const }
+
+  if (usaApi()) {
+    aplicarSnapshot(
+      await activarLicenciaApi({
+        ...datos,
+        planId: eleccion.planId,
+        ciclo: eleccion.ciclo,
+      }),
+    )
+    estado.planElegido = null
+    return
+  }
+
   if (!estado.licencia || !estado.titular || !usuarioActual.value) estado.titular = estado.sesion?.correo ?? ''
   const inicio = new Date()
   ahora.value = inicio.getTime()
@@ -529,7 +691,11 @@ export function activarLicencia(datos: {
   }
 }
 
-export function terminarTutorial() {
+export async function terminarTutorial() {
+  if (usaApi()) {
+    aplicarSnapshot(await terminarTutorialApi())
+    return
+  }
   estado.tutorialPendiente = false
 }
 
@@ -565,14 +731,19 @@ function sembrarDatos(nombreMatriz: string) {
     },
   ]
 
-  // Uno por categoría, y el de chocolate por debajo del mínimo para que se vea el aviso de inventario.
-  const catalogo: [string, string, number, number, number][] = [
-    ['Paleta de mango', 'Paletas de agua', 18, 7, 42],
-    ['Paleta de chocolate', 'Paletas de leche', 22, 9, 6],
-    ['Agua de horchata 1 L', 'Aguas frescas', 30, 11, 24],
+  // Uno por categoría; chocolate bajo de stock; mango ya caducado y horchata por caducar para mostrar Caducados.
+  const hace = (dias: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + dias)
+    return d.toLocaleDateString('en-CA')
+  }
+  const catalogo: [string, string, number, number, number, string | undefined][] = [
+    ['Paleta de mango', 'Paletas de agua', 18, 7, 12, hace(-3)],
+    ['Paleta de chocolate', 'Paletas de leche', 22, 9, 6, hace(20)],
+    ['Agua de horchata 1 L', 'Aguas frescas', 30, 11, 24, hace(4)],
   ]
 
-  estado.productos = catalogo.map(([nombre, categoria, precio, costo, existencia], i) => ({
+  estado.productos = catalogo.map(([nombre, categoria, precio, costo, existencia, caducidad], i) => ({
     id: nuevoId(),
     sku: `PAL-${String(i + 1).padStart(3, '0')}`,
     nombre,
@@ -580,8 +751,11 @@ function sembrarDatos(nombreMatriz: string) {
     precio,
     costo,
     stockMinimo: 10,
+    caducidad,
     existencias: { [matriz.id]: existencia },
   }))
+  estado.perdidas = []
+  estado.folioPerdida = 1
 
   const metodos: MetodoPago[] = ['Efectivo', 'Tarjeta', 'Transferencia']
   const productos = estado.productos
@@ -618,39 +792,64 @@ function sembrarDatos(nombreMatriz: string) {
   estado.ventas = ventas
 }
 
-export function crearProducto(datos: {
+export async function crearProducto(datos: {
   sku: string
   nombre: string
   categoria: string
   precio: number
   costo: number
   stockMinimo: number
+  caducidad?: string
   existenciaInicial: number
 }) {
-  const { existenciaInicial, ...resto } = datos
+  if (usaApi()) {
+    aplicarSnapshot(await crearProductoApi(datos))
+    return
+  }
+  const { existenciaInicial, caducidad, ...resto } = datos
   const sucursalId = sucursalActiva.value?.id ?? ''
-  estado.productos.unshift({ id: nuevoId(), ...resto, existencias: { [sucursalId]: existenciaInicial } })
+  estado.productos.unshift({
+    id: nuevoId(),
+    ...resto,
+    caducidad: caducidad || undefined,
+    existencias: { [sucursalId]: existenciaInicial },
+  })
 }
 
-export function actualizarProducto(
+export async function actualizarProducto(
   id: string,
-  datos: Pick<Producto, 'sku' | 'nombre' | 'categoria' | 'precio' | 'costo' | 'stockMinimo'>,
+  datos: Pick<Producto, 'sku' | 'nombre' | 'categoria' | 'precio' | 'costo' | 'stockMinimo' | 'caducidad'>,
 ) {
+  if (usaApi()) {
+    aplicarSnapshot(await actualizarProductoApi(id, datos))
+    return
+  }
   const producto = estado.productos.find((p) => p.id === id)
-  if (producto) Object.assign(producto, datos)
+  if (!producto) return
+  Object.assign(producto, { ...datos, caducidad: datos.caducidad || undefined })
 }
 
-export function eliminarProducto(id: string) {
+export async function eliminarProducto(id: string) {
+  if (usaApi()) {
+    aplicarSnapshot(await eliminarProductoApi(id))
+    return
+  }
   estado.productos = estado.productos.filter((p) => p.id !== id)
 }
 
-export function registrarEntrada(datos: {
+export async function registrarEntrada(datos: {
   productoId: string
   cantidad: number
   costoUnitario: number
   proveedor: string
   nota: string
 }) {
+  if (usaApi()) {
+    aplicarSnapshot(
+      await registrarEntradaApi({ ...datos, sucursalId: sucursalActiva.value?.id }),
+    )
+    return
+  }
   const producto = estado.productos.find((p) => p.id === datos.productoId)
   const sucursalId = sucursalActiva.value?.id
   if (!producto || !sucursalId) return
@@ -668,12 +867,64 @@ export function registrarEntrada(datos: {
   })
 }
 
-export function registrarVenta(
+export async function registrarPerdida(datos: {
+  productoId: string
+  cantidad: number
+  motivo: MotivoPerdida
+  nota: string
+}) {
+  if (usaApi()) {
+    const antes = estado.perdidas[0]?.id
+    aplicarSnapshot(
+      await registrarPerdidaApi({ ...datos, sucursalId: sucursalActiva.value?.id }),
+    )
+    return estado.perdidas.find((p) => p.id !== antes) ?? estado.perdidas[0] ?? null
+  }
+  const producto = estado.productos.find((p) => p.id === datos.productoId)
+  const sucursalId = sucursalActiva.value?.id
+  if (!producto || !sucursalId) return null
+
+  const disponible = stock(producto, sucursalId)
+  const cantidad = Math.min(Math.max(0, Math.floor(datos.cantidad)), disponible)
+  if (cantidad <= 0) return null
+
+  producto.existencias[sucursalId] = disponible - cantidad
+
+  const perdida: Perdida = {
+    id: nuevoId(),
+    folio: estado.folioPerdida++,
+    fecha: new Date().toISOString(),
+    sucursalId,
+    productoId: producto.id,
+    producto: producto.nombre,
+    cantidad,
+    costoUnitario: producto.costo,
+    motivo: datos.motivo,
+    nota: datos.nota,
+  }
+  estado.perdidas.unshift(perdida)
+  return perdida
+}
+
+export async function registrarVenta(
   partidas: Partida[],
   metodoPago: MetodoPago,
   recibido: number,
   anticipo?: DatosAnticipo,
 ) {
+  if (usaApi()) {
+    const antes = new Set(estado.ventas.map((v) => v.id))
+    aplicarSnapshot(
+      await registrarVentaApi({
+        partidas,
+        metodoPago,
+        recibido,
+        anticipo,
+        sucursalId: sucursalActiva.value?.id,
+      }),
+    )
+    return estado.ventas.find((v) => !antes.has(v.id)) ?? estado.ventas.at(-1)!
+  }
   const sucursalId = sucursalActiva.value?.id ?? ''
   const total = partidas.reduce((suma, p) => suma + p.precio * p.cantidad, 0)
   const fecha = new Date().toISOString()
@@ -705,7 +956,11 @@ export function registrarVenta(
   return estado.ventas[estado.ventas.length - 1]!
 }
 
-export function abonarAnticipo(ventaId: string, monto: number, metodo: MetodoPago, recibido: number) {
+export async function abonarAnticipo(ventaId: string, monto: number, metodo: MetodoPago, recibido: number) {
+  if (usaApi()) {
+    aplicarSnapshot(await abonarAnticipoApi(ventaId, { monto, metodo, recibido }))
+    return estado.ventas.find((v) => v.id === ventaId) ?? null
+  }
   const venta = estado.ventas.find((v) => v.id === ventaId)
   if (!venta?.anticipo) return null
   const abono = Math.min(monto, saldoDe(venta))
@@ -731,29 +986,68 @@ export function correoEnUso(correo: string, exceptoId?: string) {
   return estado.usuarios.some((u) => u.correo === correo && u.id !== exceptoId)
 }
 
-export function crearUsuario(datos: DatosUsuario) {
+export async function crearUsuario(datos: DatosUsuario) {
+  if (usaApi()) {
+    const antes = new Set(estado.usuarios.map((u) => u.id))
+    aplicarSnapshot(await crearUsuarioApi({ ...datos, permisos: ordenarPermisos(datos.permisos) }))
+    return estado.usuarios.find((u) => !antes.has(u.id))!
+  }
   const usuario: Usuario = { id: nuevoId(), ...datos, permisos: ordenarPermisos(datos.permisos) }
   estado.usuarios.push(usuario)
   return usuario
 }
 
-export function actualizarUsuario(id: string, datos: DatosUsuario) {
+export async function actualizarUsuario(id: string, datos: DatosUsuario) {
+  if (esTitular({ correo: datos.correo }) || estado.usuarios.find((u) => u.id === id && esTitular(u))) {
+    Object.assign(datos, { rol: 'Administrador' as const, activo: true, permisos: TODOS_LOS_PERMISOS })
+  }
+  if (usaApi()) {
+    aplicarSnapshot(await actualizarUsuarioApi(id, { ...datos, permisos: ordenarPermisos(datos.permisos) }))
+    return
+  }
   const usuario = estado.usuarios.find((u) => u.id === id)
   if (!usuario) return
   if (esTitular(usuario)) Object.assign(datos, { rol: 'Administrador', activo: true, permisos: TODOS_LOS_PERMISOS })
   Object.assign(usuario, { ...datos, permisos: ordenarPermisos(datos.permisos) })
 }
 
-export function eliminarUsuario(id: string) {
-  estado.usuarios = estado.usuarios.filter((u) => u.id !== id || esTitular(u))
+/** Baja del equipo: permanece en historial (activo = false) y libera cupo del plan. */
+export async function eliminarUsuario(id: string) {
+  if (usaApi()) {
+    aplicarSnapshot(await eliminarUsuarioApi(id))
+    return
+  }
+  const usuario = estado.usuarios.find((u) => u.id === id)
+  if (!usuario || esTitular(usuario)) return
+  usuario.activo = false
 }
 
-export function crearSucursal(datos: Omit<Sucursal, 'id'>) {
+/** Reincorpora a alguien que estaba en bajas, si hay cupo en el plan. */
+export async function reactivarUsuario(id: string) {
+  const usuario = estado.usuarios.find((u) => u.id === id)
+  if (!usuario || usuario.activo) return
+  if (!puedeAgregar('usuarios')) return
+  if (usaApi()) {
+    aplicarSnapshot(await reactivarUsuarioApi(id))
+    return
+  }
+  usuario.activo = true
+}
+
+export async function crearSucursal(datos: Omit<Sucursal, 'id'>) {
+  if (usaApi()) {
+    aplicarSnapshot(await crearSucursalApi(datos))
+    return
+  }
   estado.sucursales.push({ id: nuevoId(), ...datos })
 }
 
-export function cambiarSucursal(id: string) {
+export async function cambiarSucursal(id: string) {
   if (sucursalFija.value) return
+  if (usaApi()) {
+    aplicarSnapshot(await cambiarSucursalApi(id))
+    return
+  }
   estado.sucursalActivaId = id
 }
 
@@ -771,7 +1065,11 @@ export function ajustarLicenciaDe(titular: string, cambios: AjusteLicencia) {
   if (negocio?.licencia) Object.assign(negocio.licencia, cambios)
 }
 
-export function cambiarPlan(planId: PlanId, ciclo: CicloPago) {
+export async function cambiarPlan(planId: PlanId, ciclo: CicloPago) {
+  if (usaApi()) {
+    aplicarSnapshot(await cambiarPlanApi(planId, ciclo))
+    return
+  }
   ajustarLicencia({ planId, ciclo })
 }
 

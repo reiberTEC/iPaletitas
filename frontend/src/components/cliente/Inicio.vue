@@ -35,11 +35,13 @@ import Ticket from './Ticket.vue'
 import { puedeVer, type Seccion } from './secciones'
 import {
   DIAS_COBRO,
+  caducados,
   diasRestantes,
   enPrueba,
   estado,
   faseActual,
   limiteDe,
+  porCaducar,
   puede,
   semanaGratis,
   stock,
@@ -76,6 +78,7 @@ const bajoStock = computed(() =>
 )
 
 const destinoAlertas = computed<Seccion | null>(() => {
+  if ((caducados.value.length || porCaducar.value.length) && puedeVer('caducados')) return 'caducados'
   if (bajoStock.value.length) return puedeSurtir.value ? 'entradas' : puedeVer('productos') ? 'productos' : null
   return puede('licencia.editar') ? 'suscripciones' : null
 })
@@ -200,11 +203,29 @@ const iconoAlerta: Record<TipoAlerta, Component> = { peligro: TriangleAlert, avi
 const nombresLimite: Record<Limite, string> = { sucursales: 'sucursales', usuarios: 'usuarios', productos: 'productos' }
 
 const alertas = computed<Alerta[]>(() => {
-  const lista: Alerta[] = bajoStock.value.slice(0, 2).map((p) => ({
-    tipo: 'peligro',
-    titulo: stock(p) ? `Bajo stock en ${p.nombre}` : `Se agotó ${p.nombre}`,
-    detalle: stock(p) ? `Quedan ${plural(stock(p), 'pieza', 'piezas')}, ¡haz un pedido!` : 'Súrtelo para volver a venderlo.',
-  }))
+  const lista: Alerta[] = []
+
+  for (const p of caducados.value.slice(0, 2)) {
+    lista.push({
+      tipo: 'peligro',
+      titulo: `Caducó ${p.nombre}`,
+      detalle: `Quedan ${plural(stock(p), 'pieza', 'piezas')}. Pásalas a pérdida en Caducados.`,
+    })
+  }
+  for (const p of porCaducar.value.slice(0, 1)) {
+    lista.push({
+      tipo: 'aviso',
+      titulo: `Por caducar: ${p.nombre}`,
+      detalle: `Quedan ${plural(stock(p), 'pieza', 'piezas')}. Véndelas primero o prepáralas para baja.`,
+    })
+  }
+  for (const p of bajoStock.value.slice(0, 2)) {
+    lista.push({
+      tipo: 'peligro',
+      titulo: stock(p) ? `Bajo stock en ${p.nombre}` : `Se agotó ${p.nombre}`,
+      detalle: stock(p) ? `Quedan ${plural(stock(p), 'pieza', 'piezas')}, ¡haz un pedido!` : 'Súrtelo para volver a venderlo.',
+    })
+  }
 
   if (enPrueba.value && faseActual.value === 'vigente') {
     lista.push({
