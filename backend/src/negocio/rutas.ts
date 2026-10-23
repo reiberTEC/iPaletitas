@@ -213,6 +213,21 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
     }
   }
 
+  const matchInvitar = ruta.match(/^\/api\/negocio\/usuarios\/([^/]+)\/invitar$/)
+  if (matchInvitar && metodo === 'POST') {
+    const id = matchInvitar[1]!
+    const u = await query<{ id: string; correo: string }>(
+      `SELECT id, correo FROM usuarios WHERE id = $1 AND cuenta_id = $2 AND activo LIMIT 1`,
+      [id, sesion.cuentaId],
+    )
+    if (!u.rows[0]) return error(res, 404, 'Usuario no encontrado.')
+    const { crearTokenPassword } = await import('../auth/password.ts')
+    const { enlace } = await crearTokenPassword({ usuarioId: u.rows[0].id, proposito: 'invitar' })
+    console.log(`[auth] Enlace invitar (${u.rows[0].correo}): ${enlace}`)
+    const snap = await snapshotNegocio(sesion.cuentaId, sesion.correo)
+    return json(res, 200, { ...snap, enlaceInvitacion: enlace })
+  }
+
   const matchReactivar = ruta.match(/^\/api\/negocio\/usuarios\/([^/]+)\/reactivar$/)
   if (matchReactivar && metodo === 'POST') {
     const id = matchReactivar[1]!
@@ -637,19 +652,22 @@ async function crearUsuario(
   const correo = str(datos.correo, 120).toLowerCase()
   const nombre = str(datos.nombre, 120)
   if (!correo || !nombre) return error(res, 400, 'Nombre y correo son obligatorios.')
-  const password = str(datos.password, 100) || 'ipaletitas-dev'
   const permisos = Array.isArray(datos.permisos) ? datos.permisos.map((p) => str(p, 40)).filter(Boolean) : []
 
+  // Contraseña aleatoria: el usuario la define con el enlace de invitación (punto 7).
+  const { hashPassword, passwordTemporal, crearTokenPassword } = await import('../auth/password.ts')
+  let enlaceInvitacion: string | undefined
+
   try {
-    const hashQ = await query<{ hash: string }>(`SELECT crypt($1, gen_salt('bf')) AS hash`, [password])
-    await query(
+    const hash = await hashPassword(str(datos.password, 100) || passwordTemporal())
+    const insertado = await query<{ id: string }>(
       `INSERT INTO usuarios (
          cuenta_id, sucursal_id, nombre, correo, telefono, puesto, fecha_ingreso,
          rol, activo, password_hash, permisos
        ) VALUES (
          $1, NULLIF($2, '')::uuid, $3, $4, $5, $6, COALESCE($7, '')::date,
          $8::rol_usuario, $9, $10, $11::text[]
-       )`,
+       ) RETURNING id`,
       [
         sesion.cuentaId,
         str(datos.sucursalId, 40),
@@ -660,15 +678,23 @@ async function crearUsuario(
         str(datos.fechaIngreso, 10) || new Date().toLocaleDateString('en-CA'),
         str(datos.rol, 40) || 'Cajero',
         datos.activo !== false,
-        hashQ.rows[0]!.hash,
+        hash,
         permisos,
       ],
     )
+    const { enlace } = await crearTokenPassword({
+      usuarioId: insertado.rows[0]!.id,
+      proposito: 'invitar',
+    })
+    enlaceInvitacion = enlace
+    console.log(`[auth] Enlace invitar (${correo}): ${enlace}`)
   } catch (e) {
     console.error(e)
     return error(res, 409, 'No se pudo crear el usuario (¿correo ya en uso?).')
   }
-  return responderSnapshot(res, sesion.cuentaId, sesion.correo)
+
+  const snap = await snapshotNegocio(sesion.cuentaId, sesion.correo)
+  json(res, 200, { ...snap, enlaceInvitacion })
 }
 
 async function actualizarUsuario(

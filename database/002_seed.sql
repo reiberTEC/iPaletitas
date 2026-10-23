@@ -1,5 +1,6 @@
 -- Semilla: planes, cupones y un usuario staff de desarrollo.
 -- Contraseña local del staff: ipaletitas-dev  (cámbiala en producción)
+-- Textos alineados con frontend/src/stores/catalogo.ts (punto 5: planes honestos).
 
 INSERT INTO planes (
   id, nombre, lema, precio_mensual, acento, acento_oscuro, incluye_de, destacado,
@@ -8,7 +9,7 @@ INSERT INTO planes (
   (
     'basica',
     'Básica',
-    'Para la paletería que va empezando.',
+    'Para el mostrador que va empezando.',
     199,
     '#10b981',
     NULL,
@@ -18,17 +19,17 @@ INSERT INTO planes (
     ARRAY[
       '1 sucursal',
       'Hasta 2 usuarios',
-      'Punto de venta para registrar tus ventas',
+      'Punto de venta (efectivo, tarjeta y transferencia)',
       'Catálogo de hasta 50 productos',
-      'Control de inventario básico',
-      'Reporte diario de ventas',
+      'Inventario, entradas y caducados a pérdida',
+      'Historial de ventas de los últimos 3 meses',
       'Soporte por correo'
     ]
   ),
   (
     'doble',
     'Doble',
-    'Para negocios que ya despegaron.',
+    'Para negocios con más movimiento.',
     399,
     '#3b82f6',
     NULL,
@@ -39,16 +40,16 @@ INSERT INTO planes (
       'Hasta 2 sucursales',
       'Hasta 5 usuarios',
       'Productos ilimitados',
-      'Recetario digital vinculado al inventario',
-      'Alertas de stock bajo',
-      'Reportes semanales y mensuales',
-      'Soporte por chat'
+      'Anticipos en el punto de venta',
+      'Alertas de stock bajo y por caducar',
+      'Historial de ventas de 12 meses',
+      'Soporte por correo'
     ]
   ),
   (
     'doble-especial',
     'Doble Especial',
-    'Para crecer con varias sucursales y equipo.',
+    'Para varias sucursales y un equipo con roles.',
     699,
     '#7c3aed',
     NULL,
@@ -58,17 +59,17 @@ INSERT INTO planes (
     ARRAY[
       'Hasta 5 sucursales',
       'Hasta 15 usuarios',
-      'Gestión de empleados con roles y permisos',
-      'Control de insumos y producción por lotes',
-      'Dashboards con gráficas en tiempo real',
-      'Exporta reportes a Excel y PDF',
-      'Soporte prioritario'
+      'Roles y permisos por empleado',
+      'Marca blanca: logo y colores de tu negocio',
+      'Gráficas de ventas en el panel',
+      'Historial de ventas de 24 meses',
+      'Soporte prioritario por correo'
     ]
   ),
   (
     'especial-super',
     'Especial Super',
-    'Todo iPaletitas, sin límites.',
+    'Sin techos de sucursales, usuarios ni historial.',
     1199,
     '#f59e0b',
     '#93c5fd',
@@ -76,12 +77,11 @@ INSERT INTO planes (
     false,
     NULL, NULL, NULL, NULL,
     ARRAY[
-      'Sucursales y usuarios ilimitados',
-      'Pronóstico de demanda por temporada',
-      'Programa de lealtad para tus clientes',
-      'Facturación electrónica (CFDI) integrada',
-      'API e integraciones con otras plataformas',
-      'Asesor dedicado y soporte 24/7'
+      'Sucursales, usuarios y productos ilimitados',
+      'Historial de ventas sin límite de meses',
+      'Todo lo de Doble Especial, sin cupos',
+      'Misma app de mostrador: POS, inventario y caducados',
+      'Soporte prioritario por correo'
     ]
   )
 ON CONFLICT (id) DO UPDATE SET

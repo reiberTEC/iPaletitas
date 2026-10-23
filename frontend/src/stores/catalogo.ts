@@ -66,28 +66,32 @@ export function renovarVencimiento(vence: string, ciclo: CicloPago, ahora = Date
   return desde.toISOString()
 }
 
+/**
+ * Textos de cada plan = lo que la app ya hace + los techos de uso.
+ * No se prometen módulos futuros (CFDI, recetario, lealtad, export Excel, etc.).
+ */
 export const PLANES: Plan[] = [
   {
     id: 'basica',
     nombre: 'Básica',
-    lema: 'Para la paletería que va empezando.',
+    lema: 'Para el mostrador que va empezando.',
     precioMensual: 199,
     acento: '#10b981',
     limites: { sucursales: 1, usuarios: 2, productos: 50, historialMeses: 3 },
     incluye: [
       '1 sucursal',
       'Hasta 2 usuarios',
-      'Punto de venta para registrar tus ventas',
+      'Punto de venta (efectivo, tarjeta y transferencia)',
       'Catálogo de hasta 50 productos',
-      'Control de inventario básico',
-      'Reporte diario de ventas',
+      'Inventario, entradas y caducados a pérdida',
+      'Historial de ventas de los últimos 3 meses',
       'Soporte por correo',
     ],
   },
   {
     id: 'doble',
     nombre: 'Doble',
-    lema: 'Para negocios que ya despegaron.',
+    lema: 'Para negocios con más movimiento.',
     precioMensual: 399,
     acento: '#3b82f6',
     incluyeDe: 'Básica',
@@ -96,16 +100,16 @@ export const PLANES: Plan[] = [
       'Hasta 2 sucursales',
       'Hasta 5 usuarios',
       'Productos ilimitados',
-      'Recetario digital vinculado al inventario',
-      'Alertas de stock bajo',
-      'Reportes semanales y mensuales',
-      'Soporte por chat',
+      'Anticipos en el punto de venta',
+      'Alertas de stock bajo y por caducar',
+      'Historial de ventas de 12 meses',
+      'Soporte por correo',
     ],
   },
   {
     id: 'doble-especial',
     nombre: 'Doble Especial',
-    lema: 'Para crecer con varias sucursales y equipo.',
+    lema: 'Para varias sucursales y un equipo con roles.',
     precioMensual: 699,
     acento: '#7c3aed',
     incluyeDe: 'Doble',
@@ -114,17 +118,17 @@ export const PLANES: Plan[] = [
     incluye: [
       'Hasta 5 sucursales',
       'Hasta 15 usuarios',
-      'Gestión de empleados con roles y permisos',
-      'Control de insumos y producción por lotes',
-      'Dashboards con gráficas en tiempo real',
-      'Exporta reportes a Excel y PDF',
-      'Soporte prioritario',
+      'Roles y permisos por empleado',
+      'Marca blanca: logo y colores de tu negocio',
+      'Gráficas de ventas en el panel',
+      'Historial de ventas de 24 meses',
+      'Soporte prioritario por correo',
     ],
   },
   {
     id: 'especial-super',
     nombre: 'Especial Super',
-    lema: 'Todo iPaletitas, sin límites.',
+    lema: 'Sin techos de sucursales, usuarios ni historial.',
     precioMensual: 1199,
     acento: '#f59e0b',
     acentoOscuro: '#93c5fd',
@@ -136,12 +140,11 @@ export const PLANES: Plan[] = [
       historialMeses: Infinity,
     },
     incluye: [
-      'Sucursales y usuarios ilimitados',
-      'Pronóstico de demanda por temporada',
-      'Programa de lealtad para tus clientes',
-      'Facturación electrónica (CFDI) integrada',
-      'API e integraciones con otras plataformas',
-      'Asesor dedicado y soporte 24/7',
+      'Sucursales, usuarios y productos ilimitados',
+      'Historial de ventas sin límite de meses',
+      'Todo lo de Doble Especial, sin cupos',
+      'Misma app de mostrador: POS, inventario y caducados',
+      'Soporte prioritario por correo',
     ],
   },
 ]

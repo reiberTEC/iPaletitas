@@ -208,3 +208,56 @@ export function crearSucursalApi(datos: unknown) {
     body: JSON.stringify(datos),
   })
 }
+
+export function invitarUsuarioApi(id: string) {
+  return pedir<SnapshotNegocio & { enlaceInvitacion?: string }>(`/api/negocio/usuarios/${id}/invitar`, {
+    method: 'POST',
+  })
+}
+
+export function olvidarPasswordApi(correo: string) {
+  return pedir<{ ok: boolean; mensaje: string; enlace?: string }>('/api/auth/olvidar', {
+    method: 'POST',
+    body: JSON.stringify({ correo }),
+  })
+}
+
+export function definirPasswordApi(token: string, password: string) {
+  return pedir<{ ok: boolean; mensaje: string }>('/api/auth/definir', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  })
+}
+
+export function cambiarPasswordApi(actual: string, nueva: string) {
+  return pedir<{ ok: boolean }>('/api/auth/cambiar', {
+    method: 'PUT',
+    body: JSON.stringify({ actual, nueva }),
+  })
+}
+
+export function estadoPagosApi() {
+  return pedir<{ stripe: boolean }>('/api/pagos/estado')
+}
+
+export function crearCheckoutApi(datos: unknown) {
+  return pedir<{ url: string; sessionId: string }>('/api/pagos/checkout', {
+    method: 'POST',
+    body: JSON.stringify(datos),
+  })
+}
+
+export function confirmarPagoApi(sessionId: string) {
+  return pedir<SnapshotNegocio>('/api/pagos/confirmar', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  })
+}
+
+export function portalPagosApi() {
+  return pedir<{ url: string }>('/api/pagos/portal', { method: 'POST' })
+}
+
+export function sincronizarPagosApi() {
+  return pedir<SnapshotNegocio>('/api/pagos/sincronizar', { method: 'POST' })
+}

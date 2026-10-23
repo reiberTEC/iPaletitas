@@ -28,7 +28,7 @@ Punto de venta e inventario en la nube para comercios pequeños: cobrar con tick
 
 - Mostrador con computadora, tablet o teléfono; uso rápido y repetido durante el día, a veces con poca luz o de noche (existe modo oscuro).
 - Flujo comercial: página pública → registro → elegir plan (semana gratis) → activar licencia → panel del negocio.
-- Planes: Básica, Doble, Doble Especial y Especial Super, con límites de sucursales, usuarios, productos y meses de historial.
+- Planes: Básica, Doble, Doble Especial y Especial Super. Se diferencian por límites (sucursales, usuarios, productos, historial) y tono de soporte; los módulos prometidos son solo los que ya existen en el panel.
 - Roles: Administrador, Gerente, Cajero y Almacén, con permisos por módulo (ver, crear, editar, eliminar). El titular de la cuenta siempre tiene acceso total.
 
 ## Capabilities and Constraints
@@ -65,4 +65,8 @@ Punto de venta e inventario en la nube para comercios pequeños: cobrar con tick
 
 1. ~~Caducados → pérdida~~ (hecho en el panel).
 2. ~~Esquema PostgreSQL + API auth + panel conectado~~ — datos del negocio compartidos entre dispositivos.
-3. ~~PWA + empaquetado para HTTPS~~ — ver `APP.md` y `DEPLOY.md`. Falta el deploy real en un host (Render/Railway) con dominio HTTPS; luego APK / instalador Windows si se quieren tiendas.
+3. ~~PWA + empaquetado para HTTPS~~ — ver `APP.md` y `DEPLOY.md`. Deploy en host aplazado; Neon listo.
+4. ~~Planes honestos~~ — textos y comparativa alineados a lo que la app ya hace (sin CFDI, recetario, lealtad, etc.).
+5. ~~Pagos reales (Stripe Checkout)~~ — primer cobro al contratar; ver `PAGOS.md`.
+6. ~~Contraseñas~~ — recuperar / definir / invitar al equipo (sin SMTP: enlace copiable).
+7. ~~Renovaciones Stripe~~ — Subscription + Customer Portal + webhook/sync; ver `PAGOS.md`.

@@ -134,9 +134,9 @@ const TEMAS: Tema[] = [
   },
   {
     contexto: 'publico',
-    claves: ['pago', 'pagar', 'pagas', 'tarjeta', 'renovacion', 'renueva', 'cobro', 'meses sin intereses', 'msi', 'paypal', 'mercado pago'],
+    claves: ['pago', 'pagar', 'pagas', 'tarjeta', 'renovacion', 'renueva', 'cobro', 'stripe', 'paypal', 'mercado pago'],
     texto: () =>
-      `Pagas con tarjeta de crédito o débito, PayPal, Mercado Pago o Google Pay. En planes anuales hay ${MESES_SIN_INTERESES.join(', ')} meses sin intereses. Las renovaciones se cobran solas; si un cobro no pasa, tienes ${DIAS_COBRO} días para pagar antes de que se suspenda.`,
+      `Al contratar pagas con tarjeta por Stripe. Las renovaciones se cobran solas a esa tarjeta; en Mi licencia puedes administrar el pago (cambiar tarjeta o cancelar). PayPal y Mercado Pago aún no están. Si un cobro no pasa, tienes ${DIAS_COBRO} días antes de que se suspenda.`,
     sugerencias: ['¿Hay semana gratis?', '¿Tienen cupones?'],
   },
   {
@@ -181,7 +181,8 @@ const TEMAS: Tema[] = [
   {
     contexto: 'publico',
     claves: ['factura', 'facturacion', 'cfdi', 'sat'],
-    texto: () => 'La facturación electrónica (CFDI) viene integrada en el plan Especial Super.',
+    texto: () =>
+      'Hoy iPaletitas no emite CFDI. Llevas ventas, inventario y caducados; la factura al SAT la haces con tu contador o un PAC. Si buscas techos de uso, mira los planes.',
     acciones: ['planes'],
   },
   {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ArrowRight, Check, Copy, CreditCard, Gift, Lock, Pencil, ShieldCheck, Tag, X } from '@lucide/vue'
 import FlujoEncabezado from './FlujoEncabezado.vue'
 import FormTarjeta from './pago/FormTarjeta.vue'
@@ -7,7 +7,13 @@ import LogoTarjeta from './pago/LogoTarjeta.vue'
 import { mascotaPlan } from './planes/mascotas'
 import UiButton from './ui/Button.vue'
 import UiModal from './ui/Modal.vue'
-import { DIAS_GARANTIA, PLAN_RECOMENDADO, activarLicencia, estado, planPorId, precioPlan } from '@/stores/negocio'
+import {
+  confirmarPagoApi,
+  crearCheckoutApi,
+  estadoPagosApi,
+  ErrorApi,
+} from '@/lib/api'
+import { DIAS_GARANTIA, PLAN_RECOMENDADO, activarLicencia, aplicarSnapshot, estado, planPorId, precioPlan } from '@/stores/negocio'
 import { CUPONES, IVA, MESES_SIN_INTERESES } from '@/stores/catalogo'
 import { cobrarContratacion } from '@/stores/admin'
 import { dinero, fecha, iniciales, precio } from '@/lib/formato'
@@ -15,6 +21,8 @@ import { BILLETERAS, registrarBilletera, textoTarjeta, type Billetera, type Tarj
 import { copiarTexto } from '@/lib/utils'
 
 defineEmits(['listo', 'volver', 'cambiarCuenta'])
+
+const CLAVE_PENDIENTE = 'ipaletitas:pago-pendiente'
 
 const plan = computed(
   () => planPorId(estado.planElegido?.planId ?? estado.licencia?.planId ?? PLAN_RECOMENDADO),
@@ -93,6 +101,13 @@ const meses = ref(0)
 const formTarjeta = ref<InstanceType<typeof FormTarjeta>>()
 const autorizando = ref(false)
 
+const stripeActivo = ref(false)
+const cargandoStripe = ref(true)
+const pagando = ref(false)
+const confirmando = ref(false)
+const errorPago = ref('')
+const avisoCancelado = ref(false)
+
 /* ---------- Montos: los precios ya traen IVA; aquí se desglosa ---------- */
 
 const precioLista = computed(() => precioPlan(plan.value, ciclo.value))
@@ -127,7 +142,7 @@ const subtotal = computed(() => precioLista.value / (1 + IVA))
 const descuento = computed(() => (subtotal.value * porcentaje.value) / 100)
 const iva = computed(() => (subtotal.value - descuento.value) * IVA)
 
-const plazos = computed(() => (ciclo.value === 'anual' && metodo.value === 'tarjeta' ? MESES_SIN_INTERESES : []))
+const plazos = computed(() => (ciclo.value === 'anual' && metodo.value === 'tarjeta' && !stripeActivo.value ? MESES_SIN_INTERESES : []))
 const mesesElegidos = computed(() => (plazos.value.length ? meses.value : 0))
 
 const enDias = (dias: number, base = new Date()) => {
@@ -160,19 +175,91 @@ const cobrado = ref(0)
 const mesesCobrados = ref(0)
 const copiado = ref(false)
 
+function guardarPendiente() {
+  sessionStorage.setItem(
+    CLAVE_PENDIENTE,
+    JSON.stringify({
+      negocio: form.negocio.trim(),
+      giro: form.giro,
+      telefono: form.telefono.trim(),
+      sucursal: form.sucursal.trim(),
+      facturacion: { ...facturacion, direccion: facturacion.direccion.trim() },
+      cupon: cupon.value?.codigo ?? '',
+      totalHoy: totalHoy.value,
+    }),
+  )
+}
+
+function leerPendiente(): { totalHoy?: number } | null {
+  try {
+    const raw = sessionStorage.getItem(CLAVE_PENDIENTE)
+    return raw ? (JSON.parse(raw) as { totalHoy?: number }) : null
+  } catch {
+    return null
+  }
+}
+
+function limpiarUrlPago() {
+  const url = new URL(window.location.href)
+  url.searchParams.delete('pago')
+  url.searchParams.delete('session_id')
+  window.history.replaceState({}, '', url.pathname + url.search + url.hash)
+}
+
+async function pagarConStripe() {
+  errorPago.value = ''
+  if (!form.negocio.trim()) {
+    errorPago.value = 'El nombre del negocio es obligatorio.'
+    return
+  }
+  if (!facturacion.estado || !facturacion.direccion.trim() || !facturacion.codigoPostal) {
+    errorPago.value = 'Completa los datos de facturación.'
+    return
+  }
+
+  const eleccion = estado.planElegido ?? { planId: PLAN_RECOMENDADO, ciclo: 'mensual' as const }
+  pagando.value = true
+  guardarPendiente()
+  try {
+    const { url } = await crearCheckoutApi({
+      planId: eleccion.planId,
+      ciclo: eleccion.ciclo,
+      cupon: cupon.value?.codigo,
+      negocio: form.negocio.trim(),
+      giro: form.giro,
+      telefono: form.telefono.trim(),
+      sucursal: form.sucursal.trim() || 'Matriz',
+      facturacion: {
+        pais: facturacion.pais,
+        estado: facturacion.estado,
+        direccion: facturacion.direccion.trim(),
+        codigoPostal: facturacion.codigoPostal,
+      },
+    })
+    window.location.href = url
+  } catch (e) {
+    errorPago.value = e instanceof ErrorApi ? e.message : 'No se pudo iniciar el pago.'
+    pagando.value = false
+  }
+}
+
 function pagar() {
+  if (stripeActivo.value) {
+    void pagarConStripe()
+    return
+  }
   if (billetera.value) {
     autorizando.value = true
     return
   }
   const tarjeta = formTarjeta.value?.validar()
-  if (tarjeta) completar(tarjeta)
+  if (tarjeta) void completar(tarjeta)
 }
 
 function autorizarBilletera() {
   if (!billetera.value) return
   autorizando.value = false
-  completar(registrarBilletera(billetera.value, correoBilletera.value))
+  void completar(registrarBilletera(billetera.value, correoBilletera.value))
 }
 
 async function completar(tarjeta: TarjetaRegistrada) {
@@ -196,19 +283,86 @@ async function completar(tarjeta: TarjetaRegistrada) {
   window.scrollTo({ top: 0, behavior: 'instant' })
 }
 
+async function confirmarRetorno(sessionId: string) {
+  confirmando.value = true
+  errorPago.value = ''
+  try {
+    const snap = await confirmarPagoApi(sessionId)
+    aplicarSnapshot(snap)
+    estado.planElegido = null
+    const pendiente = leerPendiente()
+    cobrado.value = pendiente?.totalHoy ?? totalHoy.value
+    mesesCobrados.value = 0
+    sessionStorage.removeItem(CLAVE_PENDIENTE)
+    activada.value = true
+    limpiarUrlPago()
+    window.scrollTo({ top: 0, behavior: 'instant' })
+  } catch (e) {
+    errorPago.value = e instanceof ErrorApi ? e.message : 'No se pudo confirmar el pago.'
+  } finally {
+    confirmando.value = false
+  }
+}
+
 async function copiar() {
   await copiarTexto(estado.licencia?.clave ?? '')
   copiado.value = true
   setTimeout(() => (copiado.value = false), 1800)
 }
+
+onMounted(async () => {
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('pago') === 'cancelado') {
+    avisoCancelado.value = true
+    limpiarUrlPago()
+  }
+
+  const sessionId = params.get('session_id')
+  if (params.get('pago') === 'ok' && sessionId) {
+    try {
+      const { stripe } = await estadoPagosApi()
+      stripeActivo.value = stripe
+    } catch {
+      stripeActivo.value = false
+    } finally {
+      cargandoStripe.value = false
+    }
+    await confirmarRetorno(sessionId)
+    return
+  }
+
+  if (estado.licencia) {
+    activada.value = true
+    cobrado.value = leerPendiente()?.totalHoy ?? totalHoy.value
+    cargandoStripe.value = false
+    return
+  }
+
+  try {
+    const { stripe } = await estadoPagosApi()
+    stripeActivo.value = stripe
+  } catch {
+    stripeActivo.value = false
+  } finally {
+    cargandoStripe.value = false
+  }
+})
 </script>
 
 <template>
   <div class="ip-fondo min-h-svh w-full font-sans text-slate-900">
-    <FlujoEncabezado :paso="3" :sin-volver="activada" @volver="$emit('volver')" />
+    <FlujoEncabezado :paso="3" :sin-volver="activada || confirmando" @volver="$emit('volver')" />
 
     <main class="mx-auto w-full max-w-6xl px-5 pt-12 pb-20 sm:px-6 lg:pt-16">
-      <section v-if="activada && estado.licencia" class="mx-auto max-w-xl">
+      <div
+        v-if="confirmando"
+        class="mx-auto max-w-xl rounded-2xl bg-white p-10 text-center"
+      >
+        <p class="font-display text-xl font-bold">Confirmando tu pago…</p>
+        <p class="mt-2 text-slate-600">Un momento, estamos activando tu licencia.</p>
+      </div>
+
+      <section v-else-if="activada && estado.licencia" class="mx-auto max-w-xl">
         <div class="relative w-fit">
           <img :src="mascota.src" :alt="mascota.alt" class="mascota-exito h-40 w-auto" />
           <span class="exito-sello" aria-hidden="true"><Check class="size-6" :stroke-width="3" /></span>
@@ -271,6 +425,20 @@ async function copiar() {
             Paga tu suscripción
           </h1>
 
+          <p
+            v-if="!cargandoStripe && !stripeActivo"
+            class="aviso-demo"
+            role="status"
+          >
+            Modo demo: no se cobra de verdad. Configura <code>STRIPE_SECRET_KEY</code> en el backend para pagos reales.
+          </p>
+
+          <p v-if="avisoCancelado" class="aviso-cancelado" role="status">
+            Cancelaste el pago en Stripe. Puedes intentarlo de nuevo cuando quieras.
+          </p>
+
+          <p v-if="errorPago" class="aviso-error" role="alert">{{ errorPago }}</p>
+
           <!-- Datos del negocio -->
           <fieldset class="bloque">
             <legend class="bloque-titulo">Datos de tu negocio</legend>
@@ -312,63 +480,76 @@ async function copiar() {
             </div>
           </fieldset>
 
-          <!-- Método de pago -->
-          <fieldset class="bloque">
+          <!-- Stripe: un solo método -->
+          <fieldset v-if="stripeActivo" class="bloque">
             <legend class="bloque-titulo">Método de pago</legend>
-            <div class="metodos">
-              <label :class="['metodo', { activo: metodo === 'tarjeta' }]">
-                <input v-model="metodo" type="radio" name="metodo" value="tarjeta" class="sr-only" />
-                <CreditCard class="size-5 shrink-0" aria-hidden="true" />
-                <span class="metodo-texto">Tarjeta de crédito o débito</span>
-              </label>
-              <label v-for="opcion in BILLETERAS" :key="opcion" :class="['metodo', { activo: metodo === opcion }]">
-                <input v-model="metodo" type="radio" name="metodo" :value="opcion" class="sr-only" />
-                <LogoTarjeta :marca="opcion" :ancho="54" aria-hidden="true" />
-                <span class="sr-only">{{ opcion }}</span>
-              </label>
-            </div>
-          </fieldset>
-
-          <!-- Tarjeta o billetera -->
-          <fieldset v-if="metodo === 'tarjeta'" class="bloque">
-            <legend class="bloque-titulo">
-              Información de la tarjeta
-              <Lock class="size-4" aria-hidden="true" />
-            </legend>
-            <FormTarjeta ref="formTarjeta">
-              <template v-if="plazos.length">
-                <label class="ip-label" for="meses">Pagos</label>
-                <select id="meses" v-model.number="meses" class="ip-input">
-                  <option :value="0">Una sola exhibición de {{ dinero(totalHoy) }}</option>
-                  <option v-for="n in plazos" :key="n" :value="n">
-                    {{ n }} meses sin intereses de {{ dinero(totalHoy / n) }}
-                  </option>
-                </select>
-                <p class="mt-2 mb-0 text-sm text-slate-500">Los meses sin intereses aplican con tarjeta de crédito.</p>
-              </template>
-            </FormTarjeta>
-          </fieldset>
-
-          <fieldset v-else class="bloque">
-            <legend class="bloque-titulo">Tu cuenta de {{ billetera }}</legend>
-            <div class="billetera">
-              <LogoTarjeta v-if="billetera" :marca="billetera" :ancho="60" aria-hidden="true" />
+            <div class="stripe-info">
+              <CreditCard class="size-5 shrink-0" aria-hidden="true" />
               <p class="m-0 text-base leading-7 text-slate-600">
-                Al pagar te pediremos autorizar el cobro en {{ billetera }}. Hoy se cobran {{ dinero(totalHoy) }} y cada
-                renovación se cobra ahí sola.
+                Pagarás con tarjeta de crédito o débito en la página segura de Stripe. Al terminar vuelves aquí y
+                activamos tu licencia.
               </p>
             </div>
-            <label class="ip-label mt-5" for="correo-billetera">Correo de tu cuenta de {{ billetera }}</label>
-            <input
-              id="correo-billetera"
-              v-model="correoBilletera"
-              class="ip-input"
-              type="email"
-              autocomplete="email"
-              required
-              placeholder="tucorreo@ejemplo.com"
-            />
           </fieldset>
+
+          <!-- Demo: métodos locales -->
+          <template v-else>
+            <fieldset class="bloque">
+              <legend class="bloque-titulo">Método de pago</legend>
+              <div class="metodos">
+                <label :class="['metodo', { activo: metodo === 'tarjeta' }]">
+                  <input v-model="metodo" type="radio" name="metodo" value="tarjeta" class="sr-only" />
+                  <CreditCard class="size-5 shrink-0" aria-hidden="true" />
+                  <span class="metodo-texto">Tarjeta de crédito o débito</span>
+                </label>
+                <label v-for="opcion in BILLETERAS" :key="opcion" :class="['metodo', { activo: metodo === opcion }]">
+                  <input v-model="metodo" type="radio" name="metodo" :value="opcion" class="sr-only" />
+                  <LogoTarjeta :marca="opcion" :ancho="54" aria-hidden="true" />
+                  <span class="sr-only">{{ opcion }}</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset v-if="metodo === 'tarjeta'" class="bloque">
+              <legend class="bloque-titulo">
+                Información de la tarjeta
+                <Lock class="size-4" aria-hidden="true" />
+              </legend>
+              <FormTarjeta ref="formTarjeta">
+                <template v-if="plazos.length">
+                  <label class="ip-label" for="meses">Pagos</label>
+                  <select id="meses" v-model.number="meses" class="ip-input">
+                    <option :value="0">Una sola exhibición de {{ dinero(totalHoy) }}</option>
+                    <option v-for="n in plazos" :key="n" :value="n">
+                      {{ n }} meses sin intereses de {{ dinero(totalHoy / n) }}
+                    </option>
+                  </select>
+                  <p class="mt-2 mb-0 text-sm text-slate-500">Los meses sin intereses aplican con tarjeta de crédito.</p>
+                </template>
+              </FormTarjeta>
+            </fieldset>
+
+            <fieldset v-else class="bloque">
+              <legend class="bloque-titulo">Tu cuenta de {{ billetera }}</legend>
+              <div class="billetera">
+                <LogoTarjeta v-if="billetera" :marca="billetera" :ancho="60" aria-hidden="true" />
+                <p class="m-0 text-base leading-7 text-slate-600">
+                  Al pagar te pediremos autorizar el cobro en {{ billetera }}. Hoy se cobran {{ dinero(totalHoy) }} y cada
+                  renovación se cobra ahí sola.
+                </p>
+              </div>
+              <label class="ip-label mt-5" for="correo-billetera">Correo de tu cuenta de {{ billetera }}</label>
+              <input
+                id="correo-billetera"
+                v-model="correoBilletera"
+                class="ip-input"
+                type="email"
+                autocomplete="email"
+                required
+                placeholder="tucorreo@ejemplo.com"
+              />
+            </fieldset>
+          </template>
 
           <!-- Facturación -->
           <fieldset class="bloque">
@@ -433,9 +614,11 @@ async function copiar() {
                 <span class="sello-dias"><strong>{{ DIAS_GARANTIA }}</strong>días</span>
                 <span class="sello-texto">Garantía de devolución</span>
               </div>
-              <UiButton type="submit" size="lg" class="h-13 px-7 text-[1.0625rem]">
+              <UiButton type="submit" size="lg" class="h-13 px-7 text-[1.0625rem]" :disabled="pagando || cargandoStripe">
                 <Lock class="size-5" aria-hidden="true" />
-                Pagar {{ dinero(totalHoy) }}
+                <template v-if="pagando">Redirigiendo…</template>
+                <template v-else-if="stripeActivo">Pagar con tarjeta {{ dinero(totalHoy) }}</template>
+                <template v-else>Pagar {{ dinero(totalHoy) }}</template>
               </UiButton>
             </div>
           </div>
@@ -592,6 +775,45 @@ async function copiar() {
     color: var(--marca-700);
     text-decoration: underline;
   }
+}
+
+.aviso-demo,
+.aviso-cancelado,
+.aviso-error {
+  margin: 1.25rem 0 0;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.aviso-demo {
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.aviso-demo code {
+  font-size: 0.875em;
+}
+
+.aviso-cancelado {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.aviso-error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.stripe-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  color: #334155;
 }
 
 /* ---------- Bloques ---------- */
@@ -981,6 +1203,26 @@ html.oscuro .cuentas-total dd {
 html.oscuro .descuento,
 html.oscuro .cupon-error {
   color: #fca5a5;
+}
+
+html.oscuro .aviso-demo {
+  background: rgb(251 146 60 / 0.12);
+  color: #fdba74;
+}
+
+html.oscuro .aviso-cancelado {
+  background: rgb(255 255 255 / 0.06);
+  color: #cbd5e1;
+}
+
+html.oscuro .aviso-error {
+  background: rgb(239 68 68 / 0.12);
+  color: #fca5a5;
+}
+
+html.oscuro .stripe-info {
+  background: rgb(255 255 255 / 0.04);
+  color: #cbd5e1;
 }
 
 /* ---------- Éxito ---------- */

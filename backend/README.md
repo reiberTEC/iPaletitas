@@ -62,8 +62,12 @@ curl http://127.0.0.1:8788/api/salud
 | POST | `/api/auth/registro` | `{ correo, password }` |
 | POST | `/api/auth/login` | `{ correo, password, comoAdmin? }` |
 | GET | `/api/auth/yo` | Header `Authorization: Bearer …` |
+| POST | `/api/auth/olvidar` | Recupera contraseña (mismo mensaje siempre; enlace solo en consola del server hasta tener SMTP) |
+| POST | `/api/auth/definir` | `{ token, password }` define contraseña nueva |
+| PUT | `/api/auth/cambiar` | JWT + `{ actual, nueva }` |
 | GET | `/api/negocio` | Snapshot del panel (licencia, catálogo, ventas…) |
 | POST | `/api/negocio/activar` | Activa licencia + datos de ejemplo |
 | POST/PUT/DELETE | `/api/negocio/…` | Productos, entradas, pérdidas, ventas, usuarios, sucursales, marca |
+| POST | `/api/pagos/…` | Checkout, confirmar, portal, sync, webhook — ver `PAGOS.md` |
 
-Usuarios nuevos del equipo (sin contraseña en el formulario) arrancan con `ipaletitas-dev` hasta el punto 7 (recuperar / definir contraseña).
+Usuarios nuevos del equipo reciben un **enlace de invitación** para definir su contraseña (ya no se usa `ipaletitas-dev` por defecto).

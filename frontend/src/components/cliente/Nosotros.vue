@@ -28,22 +28,22 @@ const diferenciadores = [
     icono: Trophy,
     titulo: 'Nuestra diferencia competitiva',
     texto:
-      'A diferencia de los sistemas de punto de venta genéricos, iPaletitas está diseñada para el giro: manejamos recetarios, insumos perecederos, producción por lotes y temporadas de alta demanda.',
+      'Hecha para el mostrador mexicano: cobras con ticket, controlas inventario y caducados, y ves cómo va tu negocio sin un ERP pesado. En español y en pesos.',
   },
   {
     icono: Star,
     titulo: 'Nuestro distintivo en el mercado',
     texto:
-      'Somos una plataforma hecha por y para paleteros: unimos la tradición artesanal con la tecnología, con una interfaz amigable y soporte cercano en español.',
+      'Nació para paleterías y neverías, y sirve a cualquier comercio de mostrador. Marca blanca, roles por empleado y soporte cercano por correo.',
   },
 ]
 
 const plus = [
-  'Dashboards de ventas, productos y empleados con gráficas en tiempo real.',
-  'Recetario digital vinculado al inventario de insumos.',
-  'Alertas de stock bajo para no quedarte sin tus sabores estrella.',
-  'Control de plantilla, rotación y productividad del personal.',
-  'Acceso desde cualquier dispositivo, sin instalaciones.',
+  'Punto de venta con anticipos, inventario, entradas y caducados a pérdida.',
+  'Historial de ventas con gráficas por día, semana o mes.',
+  'Alertas de stock bajo y productos por caducar.',
+  'Usuarios con roles y permisos; logo y colores de tu negocio.',
+  'App instalable en escritorio, tablet o celular (PWA).',
 ]
 
 // TODO: reemplazar por las URLs reales de las cuentas de iPaletitas

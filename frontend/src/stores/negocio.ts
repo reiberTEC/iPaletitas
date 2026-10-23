@@ -22,6 +22,7 @@ import {
   crearProductoApi,
   crearSucursalApi,
   crearUsuarioApi,
+  invitarUsuarioApi,
   eliminarProductoApi,
   eliminarUsuarioApi,
   guardarMarcaApi,
@@ -989,12 +990,24 @@ export function correoEnUso(correo: string, exceptoId?: string) {
 export async function crearUsuario(datos: DatosUsuario) {
   if (usaApi()) {
     const antes = new Set(estado.usuarios.map((u) => u.id))
-    aplicarSnapshot(await crearUsuarioApi({ ...datos, permisos: ordenarPermisos(datos.permisos) }))
-    return estado.usuarios.find((u) => !antes.has(u.id))!
+    const snap = (await crearUsuarioApi({
+      ...datos,
+      permisos: ordenarPermisos(datos.permisos),
+    })) as SnapshotNegocio & { enlaceInvitacion?: string }
+    aplicarSnapshot(snap)
+    const usuario = estado.usuarios.find((u) => !antes.has(u.id))!
+    return { usuario, enlaceInvitacion: snap.enlaceInvitacion }
   }
   const usuario: Usuario = { id: nuevoId(), ...datos, permisos: ordenarPermisos(datos.permisos) }
   estado.usuarios.push(usuario)
-  return usuario
+  return { usuario, enlaceInvitacion: undefined as string | undefined }
+}
+
+export async function invitarUsuario(id: string) {
+  if (!usaApi()) return undefined
+  const snap = await invitarUsuarioApi(id)
+  aplicarSnapshot(snap)
+  return snap.enlaceInvitacion
 }
 
 export async function actualizarUsuario(id: string, datos: DatosUsuario) {

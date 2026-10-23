@@ -3,10 +3,15 @@ import { pool, query } from '../db.ts'
 import { bearer, error, json, leerJson } from '../http.ts'
 import { generarClaveLicencia } from './claves.ts'
 import { firmarSesion, verificarSesion } from './jwt.ts'
+import {
+  PASS_MIN,
+  consumirTokenPassword,
+  crearTokenPassword,
+  hashPassword,
+} from './password.ts'
 import { PERMISOS_ADMIN } from './permisos.ts'
 
 const CORREO_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const PASS_MIN = 8
 
 function limpiaCorreo(v: unknown) {
   return typeof v === 'string' ? v.trim().toLowerCase() : ''
@@ -23,11 +28,6 @@ function nombreDesdeCorreo(correo: string) {
   return limpio.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-async function hashPassword(password: string) {
-  const { rows } = await query<{ hash: string }>('SELECT crypt($1, gen_salt(\'bf\')) AS hash', [password])
-  return rows[0]!.hash
-}
-
 export async function manejarAuth(req: IncomingMessage, res: ServerResponse, ruta: string) {
   if (req.method === 'POST' && ruta === '/api/auth/registro') {
     return registro(req, res)
@@ -37,6 +37,15 @@ export async function manejarAuth(req: IncomingMessage, res: ServerResponse, rut
   }
   if (req.method === 'GET' && ruta === '/api/auth/yo') {
     return yo(req, res)
+  }
+  if (req.method === 'POST' && ruta === '/api/auth/olvidar') {
+    return olvidar(req, res)
+  }
+  if (req.method === 'POST' && ruta === '/api/auth/definir') {
+    return definir(req, res)
+  }
+  if (req.method === 'PUT' && ruta === '/api/auth/cambiar') {
+    return cambiar(req, res)
   }
   error(res, 404, 'Ruta no encontrada.')
 }
@@ -319,4 +328,121 @@ async function yo(req: IncomingMessage, res: ServerResponse) {
       cancelada: fila.cancelada,
     },
   })
+}
+
+/**
+ * Siempre la misma respuesta 200 (no revela si el correo existe).
+ * El enlace NUNCA va al navegador: solo a la consola del backend hasta tener SMTP.
+ * Así nadie puede robar la cuenta solo con saber el correo.
+ */
+async function olvidar(req: IncomingMessage, res: ServerResponse) {
+  let cuerpo: unknown
+  try {
+    cuerpo = await leerJson(req)
+  } catch {
+    return error(res, 400, 'JSON inválido.')
+  }
+  const correo = limpiaCorreo((cuerpo as Record<string, unknown>)?.correo)
+  const respuesta = {
+    ok: true,
+    mensaje:
+      'Si ese correo está registrado, generamos un enlace de recuperación. Revisa tu correo cuando el envío esté activo; en local mira la consola del backend.',
+  }
+
+  if (!CORREO_OK.test(correo)) return json(res, 200, respuesta)
+
+  try {
+    const usuario = await query<{ id: string }>(
+      `SELECT id FROM usuarios WHERE lower(correo) = $1 AND activo LIMIT 1`,
+      [correo],
+    )
+    if (usuario.rows[0]) {
+      const { enlace } = await crearTokenPassword({ usuarioId: usuario.rows[0].id, proposito: 'recuperar' })
+      console.log(`[auth] Enlace recuperar (${correo}): ${enlace}`)
+      return json(res, 200, respuesta)
+    }
+
+    const staff = await query<{ id: string }>(
+      `SELECT id FROM staff WHERE lower(correo) = $1 AND activo LIMIT 1`,
+      [correo],
+    )
+    if (staff.rows[0]) {
+      const { enlace } = await crearTokenPassword({ staffId: staff.rows[0].id, proposito: 'recuperar' })
+      console.log(`[auth] Enlace recuperar staff (${correo}): ${enlace}`)
+      return json(res, 200, respuesta)
+    }
+  } catch (e) {
+    console.error(e)
+  }
+
+  json(res, 200, respuesta)
+}
+
+async function definir(req: IncomingMessage, res: ServerResponse) {
+  let cuerpo: unknown
+  try {
+    cuerpo = await leerJson(req)
+  } catch {
+    return error(res, 400, 'JSON inválido.')
+  }
+  const datos = (cuerpo ?? {}) as Record<string, unknown>
+  const token = limpiaPass(datos.token).trim()
+  const password = limpiaPass(datos.password)
+  if (!token) return error(res, 400, 'Falta el enlace o el código.')
+
+  const resultado = await consumirTokenPassword(token, password)
+  if (!resultado.ok) return error(res, 400, resultado.error)
+  json(res, 200, { ok: true, mensaje: 'Contraseña guardada. Ya puedes iniciar sesión.' })
+}
+
+async function cambiar(req: IncomingMessage, res: ServerResponse) {
+  const token = bearer(req)
+  if (!token) return error(res, 401, 'Necesitas iniciar sesión.')
+
+  let sesion
+  try {
+    sesion = await verificarSesion(token)
+  } catch {
+    return error(res, 401, 'Sesión vencida o inválida. Vuelve a entrar.')
+  }
+
+  let cuerpo: unknown
+  try {
+    cuerpo = await leerJson(req)
+  } catch {
+    return error(res, 400, 'JSON inválido.')
+  }
+  const datos = (cuerpo ?? {}) as Record<string, unknown>
+  const actual = limpiaPass(datos.actual)
+  const nueva = limpiaPass(datos.nueva)
+  if (!actual || nueva.length < PASS_MIN) {
+    return error(res, 400, `La contraseña nueva debe tener al menos ${PASS_MIN} caracteres.`)
+  }
+
+  if (sesion.tipo === 'staff') {
+    const { rows } = await query<{ id: string }>(
+      `SELECT id FROM staff
+       WHERE id = $1 AND activo AND password_hash = crypt($2, password_hash)
+       LIMIT 1`,
+      [sesion.sub, actual],
+    )
+    if (!rows[0]) return error(res, 401, 'La contraseña actual no es correcta.')
+    const hash = await hashPassword(nueva)
+    await query(`UPDATE staff SET password_hash = $2 WHERE id = $1`, [sesion.sub, hash])
+    return json(res, 200, { ok: true })
+  }
+
+  const { rows } = await query<{ id: string }>(
+    `SELECT id FROM usuarios
+     WHERE id = $1 AND activo AND password_hash = crypt($2, password_hash)
+     LIMIT 1`,
+    [sesion.sub, actual],
+  )
+  if (!rows[0]) return error(res, 401, 'La contraseña actual no es correcta.')
+  const hash = await hashPassword(nueva)
+  await query(`UPDATE usuarios SET password_hash = $2, actualizado_en = now() WHERE id = $1`, [
+    sesion.sub,
+    hash,
+  ])
+  json(res, 200, { ok: true })
 }

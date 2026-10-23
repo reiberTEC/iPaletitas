@@ -29,12 +29,17 @@ const comparativa = computed<{ etiqueta: string; valores: (string | boolean)[] }
     etiqueta: 'Historial de ventas',
     valores: PLANES.map((p) => (p.limites.historialMeses === Infinity ? 'Sin límite' : `${p.limites.historialMeses} meses`)),
   },
-  { etiqueta: 'Punto de venta y tickets', valores: [true, true, true, true] },
-  { etiqueta: 'Alertas de stock bajo', valores: [false, true, true, true] },
-  { etiqueta: 'Roles y permisos de empleados', valores: [false, false, true, true] },
-  { etiqueta: 'Dashboards con gráficas', valores: [false, false, true, true] },
-  { etiqueta: 'Facturación electrónica (CFDI)', valores: [false, false, false, true] },
-  { etiqueta: 'Soporte', valores: ['Correo', 'Chat', 'Prioritario', '24/7'] },
+  { etiqueta: 'Punto de venta e inventario', valores: [true, true, true, true] },
+  { etiqueta: 'Caducados a pérdida', valores: [true, true, true, true] },
+  { etiqueta: 'Anticipos en mostrador', valores: [true, true, true, true] },
+  { etiqueta: 'Alertas de stock y caducidad', valores: [true, true, true, true] },
+  { etiqueta: 'Roles y permisos', valores: [true, true, true, true] },
+  { etiqueta: 'Marca blanca (logo y color)', valores: [true, true, true, true] },
+  { etiqueta: 'Gráficas de ventas', valores: [true, true, true, true] },
+  {
+    etiqueta: 'Soporte',
+    valores: ['Correo', 'Correo', 'Correo prioritario', 'Correo prioritario'],
+  },
 ])
 
 const preguntas = [

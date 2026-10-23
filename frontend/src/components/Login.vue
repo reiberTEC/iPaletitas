@@ -20,6 +20,7 @@ const togglePassword = () => {
 const emit = defineEmits<{
   irRegistro: []
   irHome: []
+  irRecuperar: []
   ingresar: [correo: string, comoAdmin: boolean]
 }>()
 
@@ -113,7 +114,7 @@ const handleLogin = async () => {
         </form>
 
         <div class="links">
-          <a href="#" class="link-forgot" @click.prevent>¿Olvidaste tu contraseña?</a>
+          <a href="#" class="link-forgot" @click.prevent="emit('irRecuperar')">¿Olvidaste tu contraseña?</a>
           <p class="link-register">
             ¿Todavía no tienes cuenta? <a href="#" @click.prevent="$emit('irRegistro')">Créala gratis</a>
           </p>

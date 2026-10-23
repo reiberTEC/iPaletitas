@@ -8,8 +8,11 @@ Esquema alineado con el panel actual: cuentas, sucursales, usuarios, productos, 
 |---------|-----------|
 | `001_schema.sql` | Extensiones, tipos, tablas, índices y vista `v_stock_sucursal` |
 | `002_seed.sql` | Planes, cupones y staff `admin@ipaletitas.com` |
+| `003_auth_pagos.sql` | Tokens de contraseña + columnas Stripe en `cuentas` (migración) |
 | `crear.ps1` | Script Windows: crea la base y aplica los SQL |
 | `.env.example` | Plantilla de conexión para la API (punto 2) |
+
+Si la base ya existía, ejecuta también `003_auth_pagos.sql` en el Query Tool / `psql`.
 
 **No se guarda** el número completo de tarjeta ni el CVV; solo marca, últimos 4, vencimiento y titular (o correo de billetera).
 

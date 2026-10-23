@@ -30,18 +30,22 @@ export function error(res: ServerResponse, codigo: number, mensaje: string) {
   json(res, codigo, { error: mensaje })
 }
 
-export async function leerJson(req: IncomingMessage): Promise<unknown> {
+export async function leerCuerpoRaw(req: IncomingMessage, limite = 3 * 1024 * 1024): Promise<Buffer> {
   const trozos: Buffer[] = []
   let total = 0
-  const limite = 3 * 1024 * 1024
   for await (const trozo of req) {
     total += (trozo as Buffer).length
     if (total > limite) throw new Error('cuerpo_grande')
     trozos.push(trozo as Buffer)
   }
-  if (!trozos.length) return {}
+  return trozos.length ? Buffer.concat(trozos) : Buffer.alloc(0)
+}
+
+export async function leerJson(req: IncomingMessage): Promise<unknown> {
+  const raw = await leerCuerpoRaw(req)
+  if (!raw.length) return {}
   try {
-    return JSON.parse(Buffer.concat(trozos).toString('utf8'))
+    return JSON.parse(raw.toString('utf8'))
   } catch {
     throw new Error('json_invalido')
   }

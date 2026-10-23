@@ -4,6 +4,7 @@ import {
   CircleCheck,
   CirclePause,
   Eye,
+  KeyRound,
   Pencil,
   Search,
   ShieldCheck,
@@ -25,6 +26,7 @@ import {
   TODOS_LOS_PERMISOS,
   actualizarUsuario,
   crearUsuario,
+  invitarUsuario,
   eliminarUsuario,
   esSesionActual,
   esTitular,
@@ -40,6 +42,7 @@ import {
   type Usuario,
 } from '@/stores/negocio'
 import { fechaDia, iniciales } from '@/lib/formato'
+import { copiarTexto } from '@/lib/utils'
 
 defineEmits(['cambiarPlan'])
 
@@ -47,6 +50,8 @@ const totalPermisos = TODOS_LOS_PERMISOS.length
 
 const busqueda = ref('')
 const filtroRol = ref<Rol | ''>('')
+const enlaceInvitacion = ref('')
+const copiadoInvitacion = ref(false)
 
 const activos = computed(() => estado.usuarios.filter((u) => u.activo))
 const bajas = computed(() => estado.usuarios.filter((u) => !u.activo))
@@ -121,10 +126,27 @@ async function guardar(datos: DatosUsuario) {
     await actualizarUsuario(editando.id, datos)
     notificar(`Se actualizó a ${datos.nombre}.`)
   } else {
-    await crearUsuario(datos)
+    const { enlaceInvitacion: enlace } = await crearUsuario(datos)
     notificar(`${datos.nombre} se agregó al equipo.`)
+    if (enlace) enlaceInvitacion.value = enlace
   }
   formulario.value = null
+}
+
+async function regenerarInvitacion(usuario: Usuario) {
+  const enlace = await invitarUsuario(usuario.id)
+  if (enlace) {
+    enlaceInvitacion.value = enlace
+    notificar(`Enlace listo para ${usuario.nombre}.`)
+  } else {
+    notificar('No se pudo generar el enlace. ¿Está corriendo la API?')
+  }
+}
+
+async function copiarInvitacion() {
+  await copiarTexto(enlaceInvitacion.value)
+  copiadoInvitacion.value = true
+  setTimeout(() => (copiadoInvitacion.value = false), 1800)
 }
 
 async function confirmarEliminacion() {
@@ -266,6 +288,16 @@ const botonIcono =
                     <Eye class="size-4" />
                   </button>
                   <button
+                    v-if="puedeEditar(usuario) && !esTitular(usuario)"
+                    type="button"
+                    :class="[botonIcono, 'hover:bg-amber-100 hover:text-amber-800']"
+                    title="Enlace para definir contraseña"
+                    :aria-label="`Invitar a ${usuario.nombre} a definir contraseña`"
+                    @click="regenerarInvitacion(usuario)"
+                  >
+                    <KeyRound class="size-4" />
+                  </button>
+                  <button
                     v-if="puedeEditar(usuario)"
                     type="button"
                     :class="[botonIcono, 'hover:bg-blue-100 hover:text-blue-700']"
@@ -398,6 +430,18 @@ const botonIcono =
       @editar="abrirEdicion(detalle!)"
       @permisos="abrirEdicion(detalle!, 'permisos')"
     />
+
+    <UiModal v-if="enlaceInvitacion" titulo="Enlace para definir contraseña" ancho="max-w-lg" @cerrar="enlaceInvitacion = ''">
+      <p class="text-sm leading-6 text-slate-600">
+        Copia este enlace y envíaselo a la persona (WhatsApp, correo, etc.). Vence en 7 días y solo sirve una vez.
+        Todavía no enviamos correo automático.
+      </p>
+      <a class="mt-4 block break-all text-sm font-medium text-blue-700" :href="enlaceInvitacion">{{ enlaceInvitacion }}</a>
+      <div class="mt-6 flex justify-end gap-3">
+        <UiButton variant="outline" @click="enlaceInvitacion = ''">Cerrar</UiButton>
+        <UiButton @click="copiarInvitacion">{{ copiadoInvitacion ? 'Copiado' : 'Copiar enlace' }}</UiButton>
+      </div>
+    </UiModal>
 
     <UiModal v-if="porEliminar" titulo="Dar de baja" ancho="max-w-md" @cerrar="porEliminar = null">
       <p class="text-sm leading-6 text-slate-600">

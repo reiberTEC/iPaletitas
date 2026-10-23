@@ -13,6 +13,7 @@ import {
   CORREO_PAGOS,
   DIAS_COBRO,
   DIAS_PRUEBA,
+  aplicarSnapshot,
   diasRestantes,
   enPrueba,
   estado,
@@ -26,6 +27,7 @@ import {
   type Limite,
 } from '@/stores/negocio'
 import { cargoDevolvible, devolverSemanaGratis } from '@/stores/admin'
+import { ErrorApi, portalPagosApi, sincronizarPagosApi } from '@/lib/api'
 import { dinero, fecha, precio } from '@/lib/formato'
 import { textoTarjeta } from '@/lib/tarjeta'
 import { copiarTexto } from '@/lib/utils'
@@ -35,7 +37,34 @@ defineEmits(['cambiarPlan'])
 const cambiandoTarjeta = ref(false)
 const confirmandoDevolucion = ref(false)
 const aviso = ref('')
+const abriendoPortal = ref(false)
 const devolvible = computed(() => (confirmandoDevolucion.value ? cargoDevolvible() : null))
+
+async function abrirPortalStripe() {
+  abriendoPortal.value = true
+  aviso.value = ''
+  try {
+    const { url } = await portalPagosApi()
+    window.location.href = url
+  } catch (e) {
+    // Sin customer de Stripe: fallback al modal local / mensaje.
+    if (e instanceof ErrorApi && e.codigo === 400) {
+      cambiandoTarjeta.value = true
+    } else {
+      aviso.value = e instanceof ErrorApi ? e.message : 'No se pudo abrir el portal de pagos.'
+    }
+    abriendoPortal.value = false
+  }
+}
+
+async function sincronizarSuscripcion() {
+  try {
+    aplicarSnapshot(await sincronizarPagosApi())
+    aviso.value = 'Suscripción sincronizada con Stripe.'
+  } catch (e) {
+    aviso.value = e instanceof ErrorApi ? e.message : 'No se pudo sincronizar.'
+  }
+}
 
 function pedirDevolucion() {
   devolverSemanaGratis()
@@ -242,20 +271,29 @@ async function copiar() {
               <p v-if="estado.licencia?.tarjeta?.vence" class="text-xs text-slate-500">Vence {{ estado.licencia.tarjeta.vence }}</p>
               <p v-else-if="estado.licencia?.tarjeta" class="text-xs text-slate-500">Las renovaciones se cobran ahí solas</p>
             </div>
-            <UiButton v-if="administra" variant="outline" size="sm" @click="cambiandoTarjeta = true">
-              {{ plazoDeCobro ? 'Pagar con tarjeta' : estado.licencia?.tarjeta ? 'Cambiar' : 'Agregar' }}
+            <UiButton
+              v-if="administra"
+              variant="outline"
+              size="sm"
+              :disabled="abriendoPortal"
+              @click="abrirPortalStripe"
+            >
+              {{ abriendoPortal ? 'Abriendo…' : plazoDeCobro ? 'Pagar / cambiar tarjeta' : 'Administrar pago' }}
             </UiButton>
           </div>
           <p class="mt-4 mb-0 text-sm leading-6 text-slate-600 [overflow-wrap:anywhere]">
             <template v-if="estado.licencia?.tarjeta">
-              Cada renovación se cobra sola a esta tarjeta. Si no se puede cobrar, tienes {{ DIAS_COBRO }} días para pagar
-              con otra tarjeta o por transferencia (comprobante a {{ CORREO_PAGOS }}).
+              Las renovaciones las cobra Stripe solo a esta tarjeta. Desde el portal puedes cambiarla o cancelar. Si un
+              cobro falla, tienes {{ DIAS_COBRO }} días de gracia; también puedes pagar por transferencia ({{ CORREO_PAGOS }}).
             </template>
             <template v-else>
-              Agrega una tarjeta para que tus renovaciones se cobren solas, o paga por transferencia y manda tu comprobante a
+              Contrata con tarjeta (Stripe) para renovaciones automáticas, o paga por transferencia y manda tu comprobante a
               {{ CORREO_PAGOS }}.
             </template>
           </p>
+          <UiButton v-if="administra" variant="ghost" size="sm" class="mt-3" @click="sincronizarSuscripcion">
+            Sincronizar con Stripe
+          </UiButton>
           <p v-if="aviso" class="mt-4 mb-0 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800" role="status">{{ aviso }}</p>
         </UiCard>
 

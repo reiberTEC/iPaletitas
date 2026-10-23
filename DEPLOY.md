@@ -68,4 +68,5 @@ Abre `http://127.0.0.1:8788` (panel + API juntos). En local la instalación PWA 
 
 - Cambia la contraseña del staff `admin@ipaletitas.com` (semilla de desarrollo).
 - No subas `.env.local` al repo.
-- Siguiente en el roadmap: planes honestos (punto 5) y pagos reales (punto 6).
+- Pagos: pon `STRIPE_SECRET_KEY` (test o live) y `FRONTEND_URL` con la URL HTTPS pública. Guía en `PAGOS.md`.
+- Cuando el backend tenga URL pública, en Stripe → Developers → Webhooks crea un endpoint hacia tu API y guarda `STRIPE_WEBHOOK_SECRET` (el handler de eventos queda para un siguiente paso; hoy la confirmación es al volver de Checkout).
