@@ -2,7 +2,21 @@
 
 Auth real contra PostgreSQL (punto 2). El panel todavía guarda el día a día en el navegador; el punto 3 lo conecta a esta API.
 
-## Arranque (haz esto una vez)
+## Producción
+
+Con el frontend compilado, este mismo proceso sirve el panel (PWA) y la API:
+
+```bat
+cd ..\frontend
+npm run build
+cd ..\backend
+set NODE_ENV=production
+npm run start
+```
+
+Publicar en internet (HTTPS): ver [`../DEPLOY.md`](../DEPLOY.md).
+
+## Arranque local (haz esto una vez)
 
 1. Copia la plantilla:
 

@@ -1,0 +1,19 @@
+# Blueprint para Render.com (punto 4: HTTPS + PWA).
+# En el dashboard de Render: New → Blueprint → este repo.
+# Luego pega DATABASE_URL (Postgres) y un JWT_SECRET fuerte.
+
+services:
+  - type: web
+    name: ipaletitas
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/salud
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: API_ORIGENES
+        sync: false

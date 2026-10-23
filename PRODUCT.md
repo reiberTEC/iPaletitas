@@ -65,4 +65,4 @@ Punto de venta e inventario en la nube para comercios pequeños: cobrar con tick
 
 1. ~~Caducados → pérdida~~ (hecho en el panel).
 2. ~~Esquema PostgreSQL + API auth + panel conectado~~ — datos del negocio compartidos entre dispositivos.
-3. ~~PWA instalable~~ (manifest, sección Descargar, modo standalone) — ver `APP.md`. Siguiente: publicar en HTTPS; luego APK / instalador Windows si se quieren tiendas.
+3. ~~PWA + empaquetado para HTTPS~~ — ver `APP.md` y `DEPLOY.md`. Falta el deploy real en un host (Render/Railway) con dominio HTTPS; luego APK / instalador Windows si se quieren tiendas.

@@ -62,6 +62,8 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
+        // La API nunca debe cachearse ni caer al index de la SPA.
+        navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       },
       devOptions: {

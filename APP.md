@@ -34,6 +34,10 @@ Misma interfaz; cada tienda reparte el instalador. La landing seguiría siendo s
 
 ## Orden recomendado
 
-1. Terminar PostgreSQL + API (datos compartidos entre dispositivos).
-2. Publicar la PWA en un dominio HTTPS → los clientes instalan desde ahí.
+1. ~~PostgreSQL + API~~ (datos compartidos entre dispositivos).
+2. **Publicar en HTTPS** — ver [`DEPLOY.md`](DEPLOY.md) (Render + Postgres en la nube). Ahí los clientes instalan la PWA.
 3. Más adelante: APK / instalador de Windows si quieres aparecer en tiendas.
+
+## Producción (mismo origen)
+
+En producción el backend sirve el build del panel (`frontend/dist`) y la API bajo `/api`. Un solo dominio HTTPS = PWA instalable sin líos de CORS.

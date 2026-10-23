@@ -31,4 +31,13 @@ npm install
 npm run dev
 ```
 
-Más detalles: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md), [`database/README.md`](database/README.md).
+## Publicar (HTTPS / PWA)
+
+Guía paso a paso: [`DEPLOY.md`](DEPLOY.md).
+
+```bat
+npm run build --prefix frontend
+npm run start --prefix backend
+```
+
+Más detalles: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md), [`database/README.md`](database/README.md), [`APP.md`](APP.md).
