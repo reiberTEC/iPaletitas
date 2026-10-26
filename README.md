@@ -6,7 +6,6 @@ Cómo probar el proyecto en local (rama `frontend`).
 
 - Node.js
 - PostgreSQL (local) o una base Neon
-- Acceso al repo como colaborador
 
 ## 1. Clonar y cambiar de rama
 
