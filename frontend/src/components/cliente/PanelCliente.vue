@@ -15,6 +15,7 @@ import {
   Palette,
   ReceiptText,
   Store,
+  TrendingUp,
   Users,
   X,
 } from '@lucide/vue'
@@ -28,6 +29,7 @@ import Productos from './Productos.vue'
 import Entradas from './Entradas.vue'
 import Caducados from './Caducados.vue'
 import Historial from './Historial.vue'
+import Ganancias from './Ganancias.vue'
 import Usuarios from './Usuarios.vue'
 import Sucursales from './Sucursales.vue'
 import MiMarca from './MiMarca.vue'
@@ -62,7 +64,7 @@ import {
   usuarioActual,
 } from '@/stores/negocio'
 import { iniciales, plural } from '@/lib/formato'
-import { aplicarMarca, logoEsClaro } from '@/lib/marca'
+import { aplicarAmbiente, aplicarMarca, logoEsClaro } from '@/lib/marca'
 
 const emit = defineEmits(['salir'])
 
@@ -84,6 +86,7 @@ const grupos: { titulo: string; pestanas: Pestana[] }[] = [
       { id: 'entradas', etiqueta: 'Entradas', icono: PackagePlus, vista: Entradas },
       { id: 'caducados', etiqueta: 'Caducados', icono: CalendarClock, vista: Caducados },
       { id: 'historial', etiqueta: 'Historial de ventas', icono: ReceiptText, vista: Historial },
+      { id: 'ganancias', etiqueta: 'Ganancias', icono: TrendingUp, vista: Ganancias },
     ],
   },
   {
@@ -151,8 +154,9 @@ watchEffect(() => {
   if (accesoRevocado.value) emit('salir')
 })
 
-// El color del negocio pinta toda la página, incluidos los modales que se abren fuera del panel.
+// El color y el ambiente del negocio pintan toda la página (panel, modales y ticket).
 watch(() => estado.marca?.color, (color) => aplicarMarca(color), { immediate: true })
+watch(() => estado.marca?.ambiente, (ambiente) => aplicarAmbiente(ambiente), { immediate: true })
 
 function ir(seccion: Seccion) {
   if (!puedeVer(seccion)) return
@@ -322,17 +326,18 @@ onBeforeUnmount(() => {
   observador?.disconnect()
   document.documentElement.style.removeProperty('overflow')
   aplicarMarca(null)
+  aplicarAmbiente('clasico')
 })
 </script>
 
 <template>
-  <div class="panel min-h-dvh w-full bg-slate-50 font-sans text-slate-900">
+  <div class="panel min-h-dvh w-full font-sans text-slate-900">
     <Transition name="velo">
       <div v-if="menuAbierto && !menuFijo" class="fixed inset-0 z-40 bg-slate-950/45" @click="menuAbierto = false" />
     </Transition>
 
     <aside
-      :class="['riel fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white', { abierto: menuVisible }]"
+      :class="['riel fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r', { abierto: menuVisible }]"
       :aria-hidden="!menuVisible"
       :inert="!menuVisible"
     >
@@ -478,7 +483,7 @@ onBeforeUnmount(() => {
     </aside>
 
     <div class="lg:pl-72">
-      <header class="encabezado sticky top-0 z-30 border-b border-slate-200 bg-white">
+      <header class="encabezado sticky top-0 z-30 border-b border-slate-200/80">
         <div class="flex h-16 items-center gap-3 px-4 sm:gap-4 sm:px-8">
           <button
             v-if="!menuFijo"
@@ -574,12 +579,36 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.panel {
+  background-color: var(--panel-fondo, #f8fafc);
+  transition: background-color 420ms var(--ease-out);
+}
+
+:global(html[data-ambiente='vivo']) .panel {
+  background-image:
+    radial-gradient(
+      920px 440px at 100% -8%,
+      color-mix(in oklab, var(--marca-200) 58%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      720px 400px at -8% 28%,
+      color-mix(in oklab, var(--marca-100) 75%, transparent),
+      transparent 68%
+    );
+}
+
 /* ---------- Cajón (celular y tableta) y riel fijo (escritorio) ---------- */
 .riel {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   transform: translateX(-100%);
-  transition: transform 280ms var(--ease-drawer);
+  background: var(--riel-fondo, #fff);
+  border-color: var(--riel-borde, #e2e8f0);
+  transition:
+    transform 280ms var(--ease-drawer),
+    background-color 420ms var(--ease-out),
+    border-color 420ms var(--ease-out);
 }
 
 .riel.abierto {
@@ -608,6 +637,9 @@ onBeforeUnmount(() => {
 
 .encabezado {
   padding-top: env(safe-area-inset-top);
+  background: color-mix(in oklab, var(--encabezado-fondo, #fff) 88%, transparent);
+  backdrop-filter: blur(10px);
+  transition: background-color 420ms var(--ease-out);
 }
 
 .contenido {

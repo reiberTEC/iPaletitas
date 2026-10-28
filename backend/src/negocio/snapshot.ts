@@ -20,6 +20,8 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
     garantia_hasta: Date | null
     logo_url: string | null
     color_marca: string | null
+    iconos_estilo?: string | null
+    ambiente_marca?: string | null
     fact_pais: string
     fact_estado: string
     fact_direccion: string
@@ -66,9 +68,10 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
         costo: string
         stock_minimo: number
         caducidad: string | null
+        icono: string | null
       }>(
         `SELECT id, sku, nombre, categoria, precio::text, costo::text, stock_minimo,
-                caducidad::text
+                caducidad::text, COALESCE(icono, '') AS icono
          FROM productos WHERE cuenta_id = $1 AND activo ORDER BY nombre`,
         [cuentaId],
       ),
@@ -216,6 +219,17 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
     (u) => u.correo.trim().toLowerCase() === correoSesion.trim().toLowerCase(),
   )
 
+  const esTitular =
+    c.titular_correo.trim().toLowerCase() === correoSesion.trim().toLowerCase()
+  const permisosSesion = usuarioSesion?.permisos ?? []
+  // Costo/margen: admin/titular o quien edita productos (almacén). Cajeros no ven costos.
+  const verCostos =
+    esTitular ||
+    usuarioSesion?.rol === 'Administrador' ||
+    permisosSesion.includes('ganancias.ver') ||
+    permisosSesion.includes('productos.editar')
+  const ocultar = (n: number) => (verCostos ? n : 0)
+
   const medio = mediosQ.rows[0]
 
   return {
@@ -255,6 +269,8 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
     marca: {
       logo: c.logo_url,
       color: c.color_marca,
+      iconos: c.iconos_estilo === 'genericos' ? 'genericos' : 'paleta',
+      ambiente: c.ambiente_marca === 'tinte' || c.ambiente_marca === 'vivo' ? c.ambiente_marca : 'clasico',
     },
     planElegido: null,
     sucursalActivaId: usuarioSesion?.sucursal_id ?? sucursales[0]?.id ?? '',
@@ -277,9 +293,10 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
       nombre: p.nombre,
       categoria: p.categoria,
       precio: Number(p.precio),
-      costo: Number(p.costo),
+      costo: ocultar(Number(p.costo)),
       stockMinimo: p.stock_minimo,
       caducidad: p.caducidad ?? undefined,
+      icono: p.icono?.trim() || undefined,
       existencias: existencias[p.id] ?? {},
     })),
     entradas: entradasQ.rows.map((e) => ({
@@ -290,7 +307,7 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
       productoId: e.producto_id,
       producto: e.producto,
       cantidad: e.cantidad,
-      costoUnitario: Number(e.costo_unitario),
+      costoUnitario: ocultar(Number(e.costo_unitario)),
       proveedor: e.proveedor,
       nota: e.nota,
     })),
@@ -302,7 +319,7 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
       productoId: p.producto_id,
       producto: p.producto,
       cantidad: p.cantidad,
-      costoUnitario: Number(p.costo_unitario),
+      costoUnitario: ocultar(Number(p.costo_unitario)),
       motivo: p.motivo,
       nota: p.nota,
     })),

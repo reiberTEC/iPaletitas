@@ -22,6 +22,7 @@ export interface Posicion {
   productoId: string
   nombre: string
   categoria: string
+  icono?: string
   cantidad: number
   total: number
 }
@@ -90,6 +91,7 @@ export function ranking(ventas: Venta[]): Posicion[] {
         productoId: partida.productoId,
         nombre: partida.nombre,
         categoria: estado.productos.find((p) => p.id === partida.productoId)?.categoria ?? '',
+        icono: estado.productos.find((p) => p.id === partida.productoId)?.icono,
         cantidad: 0,
         total: 0,
       }

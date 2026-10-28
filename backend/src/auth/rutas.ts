@@ -174,35 +174,39 @@ async function login(req: IncomingMessage, res: ServerResponse) {
   const datos = (cuerpo ?? {}) as Record<string, unknown>
   const correo = limpiaCorreo(datos.correo)
   const password = limpiaPass(datos.password)
-  const comoAdmin = Boolean(datos.comoAdmin)
 
   if (!CORREO_OK.test(correo) || !password) {
     return error(res, 400, 'Correo y contraseña son obligatorios.')
   }
 
-  if (comoAdmin) {
-    if (!correo.endsWith('@ipaletitas.com')) {
-      return error(res, 403, 'Esta cuenta no tiene permisos de administrador. Usa un correo @ipaletitas.com.')
-    }
-
-    const { rows } = await query<{ id: string; nombre: string; correo: string }>(
-      `SELECT id, nombre, correo
-       FROM staff
-       WHERE lower(correo) = $1
-         AND activo
-         AND password_hash = crypt($2, password_hash)
-       LIMIT 1`,
-      [correo, password],
-    )
-    const staff = rows[0]
-    if (!staff) return error(res, 401, 'Correo o contraseña incorrectos.')
-
+  // Consola iPaletitas solo si el correo está en staff (no basta el dominio:
+  // un negocio puede usar @ipaletitas.com como correo de dueño).
+  const staffQ = await query<{ id: string; nombre: string; correo: string }>(
+    `SELECT id, nombre, correo
+     FROM staff
+     WHERE lower(correo) = $1
+       AND activo
+       AND password_hash = crypt($2, password_hash)
+     LIMIT 1`,
+    [correo, password],
+  )
+  const staff = staffQ.rows[0]
+  if (staff) {
     const token = await firmarSesion({ sub: staff.id, tipo: 'staff', correo: staff.correo })
     return json(res, 200, {
       token,
       tipo: 'staff',
       usuario: { id: staff.id, nombre: staff.nombre, correo: staff.correo, rol: 'Staff' },
     })
+  }
+
+  // Si el correo es de staff pero la contraseña no coincidió, no caemos a usuarios.
+  const esStaff = await query<{ id: string }>(
+    `SELECT id FROM staff WHERE lower(correo) = $1 AND activo LIMIT 1`,
+    [correo],
+  )
+  if (esStaff.rows[0]) {
+    return error(res, 401, 'Correo o contraseña incorrectos.')
   }
 
   const { rows } = await query<{

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { CircleCheck, PackagePlus, PackageX, Pencil, Plus, Search, Trash, TriangleAlert } from '@lucide/vue'
-import PaletaIcon from '../icons/PaletaIcon.vue'
+import IconoProducto from '../icons/IconoProducto.vue'
 import UiBadge from '../ui/Badge.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
@@ -9,7 +9,7 @@ import UiModal from '../ui/Modal.vue'
 import AvisoLimite from './AvisoLimite.vue'
 import SurtirProducto from './SurtirProducto.vue'
 import Encabezado from '../ui/Encabezado.vue'
-import { colorCategoria } from './secciones'
+import { ICONOS_PRODUCTO, iconoPorCategoria, type IconoProductoId } from '@/lib/iconosProducto'
 import {
   actualizarProducto,
   agotados,
@@ -26,9 +26,13 @@ import {
   type EstadoStock,
   type Producto,
 } from '@/stores/negocio'
+import { ErrorApi } from '@/lib/api'
 import { dinero, plural } from '@/lib/formato'
 
 defineEmits(['cambiarPlan'])
+
+/** Costo y margen: admin (ganancias) o quien edita catálogo (almacén). */
+const verCostos = computed(() => puede('ganancias.ver') || puede('productos.editar'))
 
 const busqueda = ref('')
 const filtro = ref<'todos' | Exclude<EstadoStock, 'ok'>>('todos')
@@ -36,6 +40,8 @@ const modalAbierto = ref(false)
 const editando = ref<Producto | null>(null)
 const surtiendo = ref<Producto | null>(null)
 const confirmacion = ref('')
+const errorForm = ref('')
+const guardando = ref(false)
 let temporizador = 0
 const form = reactive({
   sku: '',
@@ -46,7 +52,18 @@ const form = reactive({
   stockMinimo: 10,
   caducidad: '',
   existenciaInicial: 0,
+  icono: 'paleta' as IconoProductoId,
 })
+
+/** Siguiente SKU libre tipo PAL-001 (evita chocar con los de ejemplo). */
+function siguienteSku() {
+  const usados = new Set(estado.productos.map((p) => p.sku.toUpperCase()))
+  for (let i = 1; i <= usados.size + 50; i++) {
+    const candidato = `PAL-${String(i).padStart(3, '0')}`
+    if (!usados.has(candidato)) return candidato
+  }
+  return `PAL-${Date.now().toString().slice(-6)}`
+}
 
 const categorias = computed(() => [...new Set(estado.productos.map((p) => p.categoria))])
 
@@ -81,22 +98,26 @@ const margen = (producto: Producto) =>
 
 function abrirNuevo() {
   editando.value = null
+  errorForm.value = ''
+  const categoria = categorias.value[0] ?? 'Comida'
   Object.assign(form, {
-    sku: `PAL-${String(estado.productos.length + 1).padStart(3, '0')}`,
+    sku: siguienteSku(),
     nombre: '',
-    categoria: categorias.value[0] ?? '',
+    categoria,
     precio: 0,
     costo: 0,
     stockMinimo: 10,
     caducidad: '',
     existenciaInicial: 0,
+    icono: iconoPorCategoria(categoria),
   })
   modalAbierto.value = true
 }
 
 function abrirEditar(producto: Producto) {
   editando.value = producto
-  const { sku, nombre, categoria, precio, costo, stockMinimo, caducidad } = producto
+  errorForm.value = ''
+  const { sku, nombre, categoria, precio, costo, stockMinimo, caducidad, icono } = producto
   Object.assign(form, {
     sku,
     nombre,
@@ -106,15 +127,32 @@ function abrirEditar(producto: Producto) {
     stockMinimo,
     caducidad: caducidad ?? '',
     existenciaInicial: 0,
+    icono: (icono as IconoProductoId) || iconoPorCategoria(categoria),
   })
   modalAbierto.value = true
 }
 
 async function guardar() {
-  const { existenciaInicial, ...datos } = form
-  if (editando.value) await actualizarProducto(editando.value.id, datos)
-  else await crearProducto({ ...datos, existenciaInicial })
-  modalAbierto.value = false
+  errorForm.value = ''
+  const sku = form.sku.trim()
+  if (!editando.value && estado.productos.some((p) => p.sku.toUpperCase() === sku.toUpperCase())) {
+    errorForm.value = `Ya existe un producto con el SKU ${sku}. Usa otro (por ejemplo ${siguienteSku()}).`
+    return
+  }
+  guardando.value = true
+  try {
+    const { existenciaInicial, ...datos } = form
+    if (editando.value) await actualizarProducto(editando.value.id, { ...datos, sku })
+    else await crearProducto({ ...datos, sku, existenciaInicial })
+    modalAbierto.value = false
+    confirmacion.value = editando.value ? `Se actualizó ${form.nombre}.` : `Se agregó ${form.nombre}.`
+    clearTimeout(temporizador)
+    temporizador = window.setTimeout(() => (confirmacion.value = ''), 3500)
+  } catch (e) {
+    errorForm.value = e instanceof ErrorApi ? e.message : 'No se pudo guardar el producto. ¿Está corriendo la API?'
+  } finally {
+    guardando.value = false
+  }
 }
 
 async function eliminar(producto: Producto) {
@@ -155,7 +193,7 @@ async function eliminar(producto: Producto) {
             :key="producto.id"
             class="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 ring-1 ring-slate-200"
           >
-            <PaletaIcon :variant="colorCategoria(producto.categoria)" :size="22" />
+            <IconoProducto :icono="producto.icono" :categoria="producto.categoria" :size="22" />
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-semibold text-slate-900" :title="producto.nombre">{{ producto.nombre }}</p>
               <p class="text-xs font-semibold text-rose-700">0 piezas</p>
@@ -186,7 +224,7 @@ async function eliminar(producto: Producto) {
             :key="producto.id"
             class="flex items-center gap-3 rounded-xl bg-white px-3 py-2.5 ring-1 ring-slate-200"
           >
-            <PaletaIcon :variant="colorCategoria(producto.categoria)" :size="22" />
+            <IconoProducto :icono="producto.icono" :categoria="producto.categoria" :size="22" />
             <div class="min-w-0 flex-1">
               <p class="truncate text-sm font-semibold text-slate-900" :title="producto.nombre">{{ producto.nombre }}</p>
               <div class="mt-1 flex items-center gap-2">
@@ -218,7 +256,7 @@ async function eliminar(producto: Producto) {
       Todo tu inventario de {{ sucursalActiva?.nombre }} está surtido.
     </p>
 
-    <div class="ip-tira mb-6 sm:grid-cols-3">
+    <div :class="['ip-tira mb-6', verCostos ? 'sm:grid-cols-3' : 'sm:grid-cols-2']">
       <div class="p-5">
         <p class="text-sm text-slate-500">Productos en catálogo</p>
         <p class="ip-cifra mt-2 text-2xl text-slate-900">{{ estado.productos.length.toLocaleString('es-MX') }}</p>
@@ -227,7 +265,7 @@ async function eliminar(producto: Producto) {
         <p class="text-sm text-slate-500">Categorías</p>
         <p class="ip-cifra mt-2 text-2xl text-slate-900">{{ categorias.length.toLocaleString('es-MX') }}</p>
       </div>
-      <div class="p-5">
+      <div v-if="verCostos" class="p-5">
         <p class="text-sm text-slate-500">Valor del inventario (costo)</p>
         <p class="ip-cifra mt-2 text-2xl text-slate-900">{{ dinero(valorInventario) }}</p>
       </div>
@@ -275,8 +313,8 @@ async function eliminar(producto: Producto) {
               <th>Producto</th>
               <th>SKU</th>
               <th class="text-right">Precio</th>
-              <th class="text-right">Costo</th>
-              <th class="text-right">Margen</th>
+              <th v-if="verCostos" class="text-right">Costo</th>
+              <th v-if="verCostos" class="text-right">Margen</th>
               <th class="text-center">Existencia</th>
               <th class="text-right">Acciones</th>
             </tr>
@@ -286,7 +324,7 @@ async function eliminar(producto: Producto) {
               <td>
                 <div class="flex items-center gap-3">
                   <span class="grid size-10 shrink-0 place-items-center rounded-xl bg-slate-50">
-                    <PaletaIcon :variant="colorCategoria(producto.categoria)" :size="24" />
+                    <IconoProducto :icono="producto.icono" :categoria="producto.categoria" :size="24" />
                   </span>
                   <div class="min-w-0 max-w-64">
                     <p class="font-semibold [overflow-wrap:anywhere] text-slate-900">{{ producto.nombre }}</p>
@@ -296,8 +334,8 @@ async function eliminar(producto: Producto) {
               </td>
               <td class="font-mono text-xs whitespace-nowrap">{{ producto.sku }}</td>
               <td class="text-right font-semibold whitespace-nowrap text-slate-900 tabular-nums">{{ dinero(producto.precio) }}</td>
-              <td class="text-right whitespace-nowrap tabular-nums">{{ dinero(producto.costo) }}</td>
-              <td class="text-right tabular-nums">
+              <td v-if="verCostos" class="text-right whitespace-nowrap tabular-nums">{{ dinero(producto.costo) }}</td>
+              <td v-if="verCostos" class="text-right tabular-nums">
                 <span :class="margen(producto) >= 40 ? 'text-emerald-700' : 'text-orange-700'">{{ margen(producto) }}%</span>
               </td>
               <td class="text-center">
@@ -375,11 +413,29 @@ async function eliminar(producto: Producto) {
             <option v-for="c in categorias" :key="c" :value="c" />
           </datalist>
         </div>
+        <div class="sm:col-span-2">
+          <p class="ip-label" id="p-icono-label">Icono del producto</p>
+          <div class="iconos-grid" role="radiogroup" aria-labelledby="p-icono-label">
+            <button
+              v-for="opcion in ICONOS_PRODUCTO"
+              :key="opcion.id"
+              type="button"
+              role="radio"
+              :aria-checked="form.icono === opcion.id"
+              :title="opcion.etiqueta"
+              :class="['icono-opcion', form.icono === opcion.id && 'icono-opcion--activa']"
+              @click="form.icono = opcion.id"
+            >
+              <IconoProducto :forzar="opcion.id" :size="26" />
+              <span>{{ opcion.etiqueta }}</span>
+            </button>
+          </div>
+        </div>
         <div>
           <label class="ip-label" for="p-precio">Precio de venta</label>
           <input id="p-precio" v-model.number="form.precio" type="number" min="0" step="0.5" class="ip-input" required />
         </div>
-        <div>
+        <div v-if="verCostos">
           <label class="ip-label" for="p-costo">Costo</label>
           <input id="p-costo" v-model.number="form.costo" type="number" min="0" step="0.5" class="ip-input" required />
         </div>
@@ -395,9 +451,14 @@ async function eliminar(producto: Producto) {
           <label class="ip-label" for="p-inicial">Existencia inicial</label>
           <input id="p-inicial" v-model.number="form.existenciaInicial" type="number" min="0" class="ip-input" />
         </div>
+        <p v-if="errorForm" class="sm:col-span-2 m-0 rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">
+          {{ errorForm }}
+        </p>
         <div class="mt-2 flex justify-end gap-3 sm:col-span-2">
-          <UiButton variant="outline" @click="modalAbierto = false">Cancelar</UiButton>
-          <UiButton type="submit">{{ editando ? 'Guardar cambios' : 'Agregar producto' }}</UiButton>
+          <UiButton type="button" variant="outline" :disabled="guardando" @click="modalAbierto = false">Cancelar</UiButton>
+          <UiButton type="submit" :disabled="guardando">
+            {{ guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Agregar producto' }}
+          </UiButton>
         </div>
       </form>
     </UiModal>
@@ -412,3 +473,52 @@ async function eliminar(producto: Producto) {
     </Transition>
   </div>
 </template>
+
+<style scoped>
+.iconos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+  gap: 0.5rem;
+  max-height: 14rem;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.icono-opcion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 4.25rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+  color: #334155;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+}
+
+.icono-opcion--activa {
+  background: var(--marca-50, #eff6ff);
+  box-shadow: inset 0 0 0 2px var(--marca-600, #2563eb);
+  color: var(--marca-800, #1e40af);
+}
+
+html.oscuro .icono-opcion {
+  background: rgb(255 255 255 / 0.04);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  color: #e2e8f0;
+}
+
+html.oscuro .icono-opcion--activa {
+  background: rgb(96 165 250 / 0.12);
+  box-shadow: inset 0 0 0 2px var(--marca-400, #60a5fa);
+  color: #fff;
+}
+</style>

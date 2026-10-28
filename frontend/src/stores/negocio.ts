@@ -61,6 +61,7 @@ export const MODULOS = [
   { id: 'entradas', nombre: 'Entradas' },
   { id: 'perdidas', nombre: 'Caducados' },
   { id: 'historial', nombre: 'Historial' },
+  { id: 'ganancias', nombre: 'Ganancias' },
   { id: 'usuarios', nombre: 'Usuarios' },
   { id: 'sucursales', nombre: 'Sucursales' },
   { id: 'licencia', nombre: 'Licencia' },
@@ -102,6 +103,8 @@ export interface Producto {
   stockMinimo: number
   /** Fecha de caducidad (YYYY-MM-DD). Si no hay, no entra a avisos de caducados. */
   caducidad?: string
+  /** Id del catálogo en lib/iconosProducto (paleta, comida, cafe…). */
+  icono?: string
   existencias: Record<string, number>
 }
 
@@ -197,10 +200,18 @@ export interface Facturacion {
   codigoPostal: string
 }
 
-/** Identidad del negocio dentro del panel: su logo y el color que lo pinta. */
+/** Estilo de iconos del catálogo / punto de venta. */
+export type IconosMarca = 'paleta' | 'genericos'
+export type { AmbienteMarca } from '@/lib/marca'
+
+/** Identidad del negocio dentro del panel: logo, color, iconos y ambiente. */
 export interface Marca {
   logo: string | null
   color: string | null
+  /** paleta = paletitas de iPaletitas; genericos = iconos neutrales (comida, abarrotes…). */
+  iconos: IconosMarca
+  /** Cómo se tiñe el panel al aplicar el color de marca. */
+  ambiente: import('@/lib/marca').AmbienteMarca
 }
 
 interface Estado {
@@ -236,7 +247,7 @@ export const ordenarPermisos = (permisos: Permiso[]) => TODOS_LOS_PERMISOS.filte
 export const ROLES: { rol: Rol; descripcion: string; permisos: Permiso[] }[] = [
   {
     rol: 'Administrador',
-    descripcion: 'Acceso total: licencia, usuarios, sucursales y reportes.',
+    descripcion: 'Acceso total: licencia, usuarios, sucursales, ganancias y reportes.',
     permisos: TODOS_LOS_PERMISOS,
   },
   {
@@ -286,7 +297,7 @@ function estadoVacio(): Estado {
     licencia: null,
     pruebaUsada: false,
     tutorialPendiente: false,
-    marca: { logo: null, color: null },
+    marca: { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' },
     planElegido: null,
     sucursalActivaId: '',
     sucursales: [],
@@ -324,6 +335,9 @@ const otrosNegocios = reactive<Record<string, DatosNegocio>>(cargarOtrosNegocios
 // Cuentas guardadas antes de caducados / pérdidas.
 estado.perdidas ??= []
 estado.folioPerdida ??= 1
+estado.marca ??= { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' }
+estado.marca.iconos ??= 'paleta'
+estado.marca.ambiente ??= 'clasico'
 
 // Usuarios guardados antes de que existieran puesto, teléfono, fecha de ingreso y permisos.
 for (const usuario of estado.usuarios as Partial<Usuario>[]) {
@@ -338,6 +352,16 @@ for (const usuario of estado.usuarios as Partial<Usuario>[]) {
       'perdidas.ver',
       ...(usuario.permisos.includes('entradas.crear') ? (['perdidas.crear', 'perdidas.editar'] as Permiso[]) : []),
       ...(usuario.permisos.includes('entradas.eliminar') ? (['perdidas.eliminar'] as Permiso[]) : []),
+    ])
+  }
+  // Administradores existentes reciben el módulo Ganancias.
+  if (usuario.rol === 'Administrador' && !usuario.permisos?.includes('ganancias.ver')) {
+    usuario.permisos = ordenarPermisos([
+      ...(usuario.permisos ?? []),
+      'ganancias.ver',
+      'ganancias.crear',
+      'ganancias.editar',
+      'ganancias.eliminar',
     ])
   }
 }
@@ -368,7 +392,15 @@ export function aplicarSnapshot(snap: SnapshotNegocio) {
     licencia: s.licencia ?? null,
     pruebaUsada: s.pruebaUsada ?? false,
     tutorialPendiente: s.tutorialPendiente ?? false,
-    marca: s.marca ?? { logo: null, color: null },
+    marca: {
+      logo: (s.marca as Marca | undefined)?.logo ?? null,
+      color: (s.marca as Marca | undefined)?.color ?? null,
+      iconos: (s.marca as Marca | undefined)?.iconos === 'genericos' ? 'genericos' : 'paleta',
+      ambiente:
+        (s.marca as Marca | undefined)?.ambiente === 'tinte' || (s.marca as Marca | undefined)?.ambiente === 'vivo'
+          ? (s.marca as Marca).ambiente
+          : 'clasico',
+    },
     planElegido: s.planElegido ?? null,
     sucursales: s.sucursales ?? [],
     usuarios: s.usuarios ?? [],
@@ -392,7 +424,14 @@ export async function sincronizarDesdeApi() {
 }
 
 export async function guardarMarca(marca: Partial<Marca>) {
-  const siguiente = { ...estado.marca, ...marca }
+  const siguiente: Marca = {
+    logo: null,
+    color: null,
+    iconos: 'paleta',
+    ambiente: 'clasico',
+    ...estado.marca,
+    ...marca,
+  }
   if (usaApi()) {
     aplicarSnapshot(await guardarMarcaApi(siguiente))
     return
@@ -405,7 +444,7 @@ export async function quitarMarca() {
     aplicarSnapshot(await quitarMarcaApi())
     return
   }
-  estado.marca = { logo: null, color: null }
+  estado.marca = { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' }
 }
 
 export const planActual = computed(() => PLANES.find((p) => p.id === estado.licencia?.planId) ?? null)
@@ -718,18 +757,6 @@ function sembrarDatos(nombreMatriz: string) {
       activo: true,
       permisos: permisosDeRol('Administrador'),
     },
-    {
-      id: nuevoId(),
-      nombre: 'Laura Méndez',
-      correo: 'laura@ejemplo.com',
-      telefono: '5534567890',
-      puesto: 'Cajera',
-      fechaIngreso: hoy(),
-      rol: 'Cajero',
-      sucursalId: matriz.id,
-      activo: true,
-      permisos: permisosDeRol('Cajero'),
-    },
   ]
 
   // Uno por categoría; chocolate bajo de stock; mango ya caducado y horchata por caducar para mostrar Caducados.
@@ -781,7 +808,7 @@ function sembrarDatos(nombreMatriz: string) {
         folio: estado.folioVenta++,
         fecha: fecha.toISOString(),
         sucursalId: matriz.id,
-        cajero: 'Laura Méndez',
+        cajero: estado.sesion?.nombre ?? 'Administrador',
         metodoPago: metodos[t % metodos.length]!,
         partidas,
         total,
@@ -801,25 +828,27 @@ export async function crearProducto(datos: {
   costo: number
   stockMinimo: number
   caducidad?: string
+  icono?: string
   existenciaInicial: number
 }) {
   if (usaApi()) {
     aplicarSnapshot(await crearProductoApi(datos))
     return
   }
-  const { existenciaInicial, caducidad, ...resto } = datos
+  const { existenciaInicial, caducidad, icono, ...resto } = datos
   const sucursalId = sucursalActiva.value?.id ?? ''
   estado.productos.unshift({
     id: nuevoId(),
     ...resto,
     caducidad: caducidad || undefined,
+    icono: icono || undefined,
     existencias: { [sucursalId]: existenciaInicial },
   })
 }
 
 export async function actualizarProducto(
   id: string,
-  datos: Pick<Producto, 'sku' | 'nombre' | 'categoria' | 'precio' | 'costo' | 'stockMinimo' | 'caducidad'>,
+  datos: Pick<Producto, 'sku' | 'nombre' | 'categoria' | 'precio' | 'costo' | 'stockMinimo' | 'caducidad' | 'icono'>,
 ) {
   if (usaApi()) {
     aplicarSnapshot(await actualizarProductoApi(id, datos))
@@ -827,7 +856,11 @@ export async function actualizarProducto(
   }
   const producto = estado.productos.find((p) => p.id === id)
   if (!producto) return
-  Object.assign(producto, { ...datos, caducidad: datos.caducidad || undefined })
+  Object.assign(producto, {
+    ...datos,
+    caducidad: datos.caducidad || undefined,
+    icono: datos.icono || undefined,
+  })
 }
 
 export async function eliminarProducto(id: string) {

@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ArrowRightLeft, Banknote, CreditCard, HandCoins, Minus, Plus, Search, ShoppingCart, X } from '@lucide/vue'
-import PaletaIcon from '../icons/PaletaIcon.vue'
+import IconoProducto from '../icons/IconoProducto.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Ticket from './Ticket.vue'
 import Anticipos from './Anticipos.vue'
-import { colorCategoria } from './secciones'
 import {
   IVA,
   anticiposPendientes,
@@ -182,7 +181,7 @@ function alAbonar(venta: Venta) {
             {{ enCarrito(producto.id)?.cantidad }}
           </span>
           <div class="grid h-20 place-items-center rounded-xl bg-slate-50">
-            <PaletaIcon :variant="colorCategoria(producto.categoria)" :size="44" />
+            <IconoProducto :icono="producto.icono" :categoria="producto.categoria" :size="44" />
           </div>
           <p class="mt-4 line-clamp-2 leading-snug font-bold [overflow-wrap:anywhere] text-slate-900">{{ producto.nombre }}</p>
           <p class="truncate text-xs text-slate-500">{{ producto.sku }} · {{ producto.categoria }}</p>

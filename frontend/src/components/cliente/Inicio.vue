@@ -284,7 +284,9 @@ const kpis = computed(() => [
 
 <template>
   <div>
-    <section class="mb-6 grid overflow-hidden rounded-3xl bg-blue-600 text-white md:grid-cols-[minmax(0,1fr)_minmax(0,38%)]">
+    <section
+      class="saludo-hero mb-6 grid overflow-hidden rounded-3xl text-white md:grid-cols-[minmax(0,1fr)_minmax(0,38%)]"
+    >
       <div class="p-7 sm:p-10">
         <UiBadge variant="outline">Sucursal {{ sucursalActiva?.nombre }}</UiBadge>
         <h1 class="font-display mt-4 text-3xl font-semibold [overflow-wrap:anywhere] sm:text-4xl">
@@ -441,6 +443,11 @@ const kpis = computed(() => [
 </template>
 
 <style scoped>
+.saludo-hero {
+  background: var(--saludo-fondo, var(--marca-600));
+  transition: background 420ms var(--ease-out);
+}
+
 .columnas {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));

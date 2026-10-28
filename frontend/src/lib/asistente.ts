@@ -40,6 +40,7 @@ const ETIQUETAS: Record<Seccion, string> = {
   entradas: 'Entradas',
   caducados: 'Caducados',
   historial: 'Historial de ventas',
+  ganancias: 'Ganancias',
   usuarios: 'Usuarios',
   sucursales: 'Sucursales',
   marca: 'Mi marca',
@@ -273,10 +274,19 @@ const TEMAS: Tema[] = [
   },
   {
     contexto: 'panel',
-    claves: ['historial', 'reporte', 'cuanto vendi', 'grafica', 'corte', 'estrella', 'ganancia', 'ventas del dia'],
+    claves: ['historial', 'reporte', 'cuanto vendi', 'grafica', 'corte', 'estrella', 'ventas del dia'],
     texto: () =>
       'En Historial de ventas ves cada venta con su ticket, gráficas por día, semana o mes y tu producto estrella.',
     acciones: ['ir:historial'],
+  },
+  {
+    contexto: 'panel',
+    claves: ['ganancia', 'utilidad', 'margen', 'cuanto gane', 'cuánto gané', 'profit', 'costo de venta'],
+    texto: () =>
+      puedeVer('ganancias')
+        ? 'En Ganancias ves ingresos, costo de lo vendido, pérdidas por caducados y la utilidad neta por día, semana o mes. Solo administradores.'
+        : 'Ganancias (utilidad y márgenes) solo la ve el administrador de la cuenta.',
+    acciones: ['ir:ganancias'],
   },
   {
     contexto: 'panel',

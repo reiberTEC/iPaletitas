@@ -34,6 +34,26 @@ function str(v: unknown, max = 200) {
   return typeof v === 'string' ? v.trim().slice(0, max) : ''
 }
 
+let columnaAmbienteLista = false
+
+/** Cuentas viejas no tenían ambiente_marca; la crea al vuelo la primera vez. */
+async function asegurarColumnaAmbiente() {
+  if (columnaAmbienteLista) return
+  await query(`
+    ALTER TABLE cuentas
+      ADD COLUMN IF NOT EXISTS ambiente_marca text NOT NULL DEFAULT 'clasico'
+  `)
+  await query(`
+    ALTER TABLE cuentas DROP CONSTRAINT IF EXISTS cuentas_ambiente_marca_chk
+  `)
+  await query(`
+    ALTER TABLE cuentas
+      ADD CONSTRAINT cuentas_ambiente_marca_chk
+      CHECK (ambiente_marca IN ('clasico', 'tinte', 'vivo'))
+  `)
+  columnaAmbienteLista = true
+}
+
 function num(v: unknown) {
   const n = typeof v === 'number' ? v : Number(v)
   return Number.isFinite(n) ? n : NaN
@@ -97,18 +117,33 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
   if (metodo === 'PUT' && ruta === '/api/negocio/marca') {
     const datos = await cuerpo(req, res)
     if (!datos) return
-    await query(`UPDATE cuentas SET logo_url = $2, color_marca = $3, actualizado_en = now() WHERE id = $1`, [
-      sesion.cuentaId,
-      typeof datos.logo === 'string' ? datos.logo : null,
-      typeof datos.color === 'string' ? datos.color : null,
-    ])
+    const iconos = str(datos.iconos, 20) === 'genericos' ? 'genericos' : 'paleta'
+    const ambienteRaw = str(datos.ambiente, 20)
+    const ambiente = ambienteRaw === 'tinte' || ambienteRaw === 'vivo' ? ambienteRaw : 'clasico'
+    await asegurarColumnaAmbiente()
+    await query(
+      `UPDATE cuentas SET
+         logo_url = $2, color_marca = $3, iconos_estilo = $4, ambiente_marca = $5, actualizado_en = now()
+       WHERE id = $1`,
+      [
+        sesion.cuentaId,
+        typeof datos.logo === 'string' ? datos.logo : null,
+        typeof datos.color === 'string' ? datos.color : null,
+        iconos,
+        ambiente,
+      ],
+    )
     return responderSnapshot(res, sesion.cuentaId, sesion.correo)
   }
 
   if (metodo === 'DELETE' && ruta === '/api/negocio/marca') {
-    await query(`UPDATE cuentas SET logo_url = null, color_marca = null, actualizado_en = now() WHERE id = $1`, [
-      sesion.cuentaId,
-    ])
+    await asegurarColumnaAmbiente()
+    await query(
+      `UPDATE cuentas SET
+         logo_url = null, color_marca = null, iconos_estilo = 'paleta', ambiente_marca = 'clasico', actualizado_en = now()
+       WHERE id = $1`,
+      [sesion.cuentaId],
+    )
     return responderSnapshot(res, sesion.cuentaId, sesion.correo)
   }
 
@@ -291,8 +326,8 @@ async function crearProducto(
     await client.query('BEGIN')
     const p = await client.query<{ id: string }>(
       `INSERT INTO productos (
-         cuenta_id, sku, nombre, categoria, precio, costo, stock_minimo, caducidad
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::date)
+         cuenta_id, sku, nombre, categoria, precio, costo, stock_minimo, caducidad, icono
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')::date, $9)
        RETURNING id`,
       [
         sesion.cuentaId,
@@ -303,6 +338,7 @@ async function crearProducto(
         num(datos.costo) || 0,
         Math.max(0, Math.floor(num(datos.stockMinimo) || 0)),
         str(datos.caducidad, 10),
+        str(datos.icono, 40),
       ],
     )
     const existencia = Math.max(0, Math.floor(num(datos.existenciaInicial) || 0))
@@ -314,7 +350,14 @@ async function crearProducto(
   } catch (e) {
     await client.query('ROLLBACK')
     console.error(e)
-    return error(res, 409, 'No se pudo crear el producto (¿SKU duplicado?).')
+    const codigo = e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : ''
+    if (codigo === '23505') {
+      return error(res, 409, `Ya existe un producto con el SKU ${sku}. Elige otro.`)
+    }
+    if (codigo === '22007' || codigo === '22008') {
+      return error(res, 400, 'La fecha de caducidad no es válida.')
+    }
+    return error(res, 500, 'No se pudo crear el producto. Intenta de nuevo.')
   } finally {
     client.release()
   }
@@ -330,7 +373,7 @@ async function actualizarProducto(
   await query(
     `UPDATE productos SET
        sku = $3, nombre = $4, categoria = $5, precio = $6, costo = $7,
-       stock_minimo = $8, caducidad = NULLIF($9, '')::date, actualizado_en = now()
+       stock_minimo = $8, caducidad = NULLIF($9, '')::date, icono = $10, actualizado_en = now()
      WHERE id = $1 AND cuenta_id = $2 AND activo`,
     [
       id,
@@ -342,6 +385,7 @@ async function actualizarProducto(
       num(datos.costo) || 0,
       Math.max(0, Math.floor(num(datos.stockMinimo) || 0)),
       str(datos.caducidad, 10),
+      str(datos.icono, 40),
     ],
   )
   return responderSnapshot(res, sesion.cuentaId, sesion.correo)

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Banknote, Check, ImageUp, LayoutDashboard, Package, ReceiptText, RotateCcw, Trash2 } from '@lucide/vue'
+import IconoProducto from '../icons/IconoProducto.vue'
 import PaletaIcon from '../icons/PaletaIcon.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
-import { estado, guardarMarca, quitarMarca } from '@/stores/negocio'
+import { ErrorApi } from '@/lib/api'
+import { estado, guardarMarca, quitarMarca, type IconosMarca } from '@/stores/negocio'
 import {
+  AMBIENTES,
   COLOR_IPALETITAS,
   PASOS,
   coloresDelLogo,
@@ -14,7 +17,9 @@ import {
   leerArchivo,
   logoEsClaro,
   logoReducido,
+  normalizarAmbiente,
   rampaDe,
+  type AmbienteMarca,
 } from '@/lib/marca'
 import { iniciales } from '@/lib/formato'
 
@@ -22,6 +27,8 @@ const MAX_MB = 5
 
 const logo = ref<string | null>(estado.marca.logo)
 const color = ref<string>(estado.marca.color ?? COLOR_IPALETITAS)
+const iconos = ref<IconosMarca>(estado.marca.iconos ?? 'paleta')
+const ambiente = ref<AmbienteMarca>(normalizarAmbiente(estado.marca.ambiente))
 const sugeridos = ref<string[]>([])
 const leyendo = ref(false)
 const error = ref('')
@@ -29,9 +36,34 @@ const arrastrando = ref(false)
 const guardado = ref(false)
 
 const rampa = computed(() => rampaDe(color.value))
-const cambios = computed(() => logo.value !== estado.marca.logo || color.value !== (estado.marca.color ?? COLOR_IPALETITAS))
-const esPredeterminada = computed(() => !estado.marca.logo && !estado.marca.color)
+const cambios = computed(
+  () =>
+    logo.value !== estado.marca.logo ||
+    color.value !== (estado.marca.color ?? COLOR_IPALETITAS) ||
+    iconos.value !== (estado.marca.iconos ?? 'paleta') ||
+    ambiente.value !== normalizarAmbiente(estado.marca.ambiente),
+)
+const esPredeterminada = computed(
+  () =>
+    !estado.marca.logo &&
+    !estado.marca.color &&
+    (estado.marca.iconos ?? 'paleta') === 'paleta' &&
+    normalizarAmbiente(estado.marca.ambiente) === 'clasico',
+)
 const legibilidad = computed(() => contraste(rampa.value[600], '#ffffff'))
+
+const estilosIcono: { id: IconosMarca; titulo: string; texto: string }[] = [
+  {
+    id: 'paleta',
+    titulo: 'Paletitas',
+    texto: 'Los iconos clásicos de iPaletitas (ideal si vendes nevería o paletas).',
+  },
+  {
+    id: 'genericos',
+    titulo: 'Genéricos',
+    texto: 'Iconos neutrales de comida, bebidas y paquetes (mejor para otros giros).',
+  },
+]
 
 /* La vista previa recibe su propia escala: lo que ves aquí todavía no cambia el resto del panel. */
 const estiloVista = computed(() =>
@@ -80,16 +112,37 @@ function quitarLogo() {
 }
 
 async function guardar() {
-  await guardarMarca({ logo: logo.value, color: color.value === COLOR_IPALETITAS ? null : color.value })
-  guardado.value = true
-  setTimeout(() => (guardado.value = false), 2200)
+  error.value = ''
+  try {
+    await guardarMarca({
+      logo: logo.value,
+      color: color.value === COLOR_IPALETITAS ? null : color.value,
+      iconos: iconos.value,
+      ambiente: ambiente.value,
+    })
+    guardado.value = true
+    setTimeout(() => (guardado.value = false), 2200)
+  } catch (e) {
+    error.value =
+      e instanceof ErrorApi || e instanceof Error
+        ? e.message
+        : 'No se pudo guardar tu marca. Revisa que la API esté corriendo.'
+  }
 }
 
 async function restablecer() {
-  await quitarMarca()
-  logo.value = null
-  color.value = COLOR_IPALETITAS
-  sugeridos.value = []
+  error.value = ''
+  try {
+    await quitarMarca()
+    logo.value = null
+    color.value = COLOR_IPALETITAS
+    iconos.value = 'paleta'
+    ambiente.value = 'clasico'
+    sugeridos.value = []
+  } catch (e) {
+    error.value =
+      e instanceof ErrorApi || e instanceof Error ? e.message : 'No se pudo restablecer la marca.'
+  }
 }
 </script>
 
@@ -97,11 +150,11 @@ async function restablecer() {
   <div>
     <Encabezado
       titulo="Mi marca"
-      descripcion="Sube el logo de tu negocio y el panel completo se pinta con sus colores: botones, menú, gráficas y tickets."
+      descripcion="Sube el logo, elige color, ambiente e iconos: el panel se adapta a tu negocio."
     >
       <UiButton v-if="!esPredeterminada" variant="ghost" @click="restablecer">
         <RotateCcw class="size-4" />
-        Usar colores de iPaletitas
+        Volver a iPaletitas
       </UiButton>
     </Encabezado>
 
@@ -192,20 +245,100 @@ async function restablecer() {
           </p>
         </div>
 
+        <h2 class="mt-10 font-display text-lg font-semibold">Ambiente del panel</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Decide cuánto se tiñe el entorno con tu color: solo botones, un tinte suave o el panel completo.
+        </p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Ambiente del panel">
+          <button
+            v-for="opcion in AMBIENTES"
+            :key="opcion.id"
+            type="button"
+            role="radio"
+            :aria-checked="ambiente === opcion.id"
+            :class="[
+              'flex flex-col gap-3 rounded-xl p-4 text-left ring-1 transition',
+              ambiente === opcion.id
+                ? 'bg-blue-50 ring-2 ring-blue-600 ring-inset'
+                : 'bg-white ring-slate-200 hover:ring-blue-300',
+            ]"
+            @click="ambiente = opcion.id"
+          >
+            <span
+              class="ambiente-muestra block h-14 overflow-hidden rounded-lg ring-1 ring-slate-200/80 ring-inset"
+              :data-ambiente-preview="opcion.id"
+              :style="{ '--preview': color }"
+              aria-hidden="true"
+            >
+              <span class="ambiente-muestra-riel" />
+              <span class="ambiente-muestra-cuerpo">
+                <span class="ambiente-muestra-barra" />
+              </span>
+            </span>
+            <div>
+              <p class="font-semibold text-slate-900">{{ opcion.titulo }}</p>
+              <p class="mt-1 text-sm leading-5 text-slate-500">{{ opcion.texto }}</p>
+            </div>
+          </button>
+        </div>
+
+        <h2 class="mt-10 font-display text-lg font-semibold">Iconos del catálogo</h2>
+        <p class="mt-1 text-sm text-slate-500">
+          Se ven en Productos, Punto de venta e historial. El menú del panel ya usa iconos genéricos.
+        </p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Estilo de iconos">
+          <button
+            v-for="opcion in estilosIcono"
+            :key="opcion.id"
+            type="button"
+            role="radio"
+            :aria-checked="iconos === opcion.id"
+            :class="[
+              'flex flex-col gap-3 rounded-xl p-4 text-left ring-1 transition',
+              iconos === opcion.id
+                ? 'bg-blue-50 ring-2 ring-blue-600 ring-inset'
+                : 'bg-white ring-slate-200 hover:ring-blue-300',
+            ]"
+            @click="iconos = opcion.id"
+          >
+            <div class="flex items-center gap-2">
+              <IconoProducto
+                :forzar="opcion.id === 'paleta' ? 'paleta' : 'comida'"
+                :size="28"
+              />
+              <IconoProducto
+                :forzar="opcion.id === 'paleta' ? 'paleta-verde' : 'bebida'"
+                :size="28"
+              />
+              <IconoProducto
+                :forzar="opcion.id === 'paleta' ? 'paleta-oro' : 'caja'"
+                :size="28"
+              />
+            </div>
+            <div>
+              <p class="font-semibold text-slate-900">{{ opcion.titulo }}</p>
+              <p class="mt-1 text-sm leading-5 text-slate-500">{{ opcion.texto }}</p>
+            </div>
+          </button>
+        </div>
+
         <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-6">
           <UiButton :disabled="!cambios || leyendo" @click="guardar">Aplicar a mi panel</UiButton>
           <span v-if="guardado" class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700" role="status">
             <Check class="size-4" />
-            Listo, tu panel ya tiene tus colores
+            Listo, tu panel ya tiene tu marca
           </span>
           <span v-else-if="cambios" class="text-sm text-slate-500">Tienes cambios sin aplicar.</span>
         </div>
+        <p v-if="error" class="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700" role="alert">
+          {{ error }}
+        </p>
       </UiCard>
 
-      <section aria-label="Vista previa" class="vista" :style="estiloVista">
+      <section aria-label="Vista previa" class="vista" :style="estiloVista" :data-ambiente-preview="ambiente">
         <p class="mb-3 text-sm font-semibold text-slate-500">Así se verá tu panel</p>
-        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <div class="flex items-center gap-3 border-b border-slate-100 p-4">
+        <div class="vista-marco overflow-hidden rounded-2xl border border-slate-200">
+          <div class="vista-riel flex items-center gap-3 border-b p-4">
             <span class="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-blue-600 text-sm font-bold text-white">
               <img
                 v-if="logo"
@@ -221,7 +354,7 @@ async function restablecer() {
             </div>
           </div>
 
-          <div class="p-4">
+          <div class="vista-cuerpo p-4">
             <span class="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 font-display text-sm font-semibold text-white">
               <Banknote class="size-5" />
               Punto de venta
@@ -252,6 +385,17 @@ async function restablecer() {
             <div class="mt-4 rounded-xl bg-blue-50 p-4">
               <p class="text-sm text-blue-900">Ventas de hoy</p>
               <p class="font-display mt-1 text-2xl font-semibold tabular-nums text-blue-700">$2,480.00</p>
+            </div>
+
+            <div class="mt-4 flex items-center gap-3 rounded-xl bg-white/70 p-3 ring-1 ring-slate-200/60 ring-inset">
+              <IconoProducto
+                :forzar="iconos === 'paleta' ? 'paleta' : 'comida'"
+                :size="36"
+              />
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-900">Producto de ejemplo</p>
+                <p class="text-xs text-slate-500">Así se verá en tu catálogo</p>
+              </div>
             </div>
           </div>
         </div>
@@ -309,6 +453,88 @@ async function restablecer() {
     background-color 200ms ease,
     color 200ms ease,
     box-shadow 200ms ease;
+}
+
+.vista-marco {
+  background: #f8fafc;
+  transition: background-color 240ms ease;
+}
+
+.vista-riel {
+  background: #fff;
+  border-color: #f1f5f9;
+  transition:
+    background-color 240ms ease,
+    border-color 240ms ease;
+}
+
+.vista-cuerpo {
+  transition: background-color 240ms ease;
+}
+
+.vista[data-ambiente-preview='tinte'] .vista-marco {
+  background: color-mix(in oklab, var(--marca-50) 92%, #f8fafc);
+}
+
+.vista[data-ambiente-preview='tinte'] .vista-riel {
+  background: color-mix(in oklab, var(--marca-50) 55%, #fff);
+  border-color: color-mix(in oklab, var(--marca-200) 55%, #f1f5f9);
+}
+
+.vista[data-ambiente-preview='vivo'] .vista-marco {
+  background:
+    radial-gradient(180px 90px at 100% 0%, color-mix(in oklab, var(--marca-200) 55%, transparent), transparent 70%),
+    color-mix(in oklab, var(--marca-100) 48%, #f8fafc);
+}
+
+.vista[data-ambiente-preview='vivo'] .vista-riel {
+  background: color-mix(in oklab, var(--marca-100) 42%, #fff);
+  border-color: color-mix(in oklab, var(--marca-300) 45%, #f1f5f9);
+}
+
+.ambiente-muestra {
+  display: grid;
+  grid-template-columns: 28% 1fr;
+  background: #f8fafc;
+}
+
+.ambiente-muestra-riel {
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+}
+
+.ambiente-muestra-cuerpo {
+  display: flex;
+  align-items: flex-start;
+  padding: 0.45rem;
+}
+
+.ambiente-muestra-barra {
+  display: block;
+  height: 0.55rem;
+  width: 70%;
+  border-radius: 999px;
+  background: var(--preview, var(--marca-600));
+}
+
+.ambiente-muestra[data-ambiente-preview='tinte'] {
+  background: color-mix(in oklab, var(--preview, var(--marca-600)) 12%, #f8fafc);
+}
+
+.ambiente-muestra[data-ambiente-preview='tinte'] .ambiente-muestra-riel {
+  background: color-mix(in oklab, var(--preview, var(--marca-600)) 10%, #fff);
+  border-color: color-mix(in oklab, var(--preview, var(--marca-600)) 22%, #e2e8f0);
+}
+
+.ambiente-muestra[data-ambiente-preview='vivo'] {
+  background:
+    radial-gradient(60px 40px at 100% 0%, color-mix(in oklab, var(--preview, var(--marca-600)) 28%, transparent), transparent),
+    color-mix(in oklab, var(--preview, var(--marca-600)) 18%, #f8fafc);
+}
+
+.ambiente-muestra[data-ambiente-preview='vivo'] .ambiente-muestra-riel {
+  background: color-mix(in oklab, var(--preview, var(--marca-600)) 16%, #fff);
+  border-color: color-mix(in oklab, var(--preview, var(--marca-600)) 30%, #e2e8f0);
 }
 
 html.oscuro .muestra[aria-checked='true'] {

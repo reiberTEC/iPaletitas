@@ -2,12 +2,6 @@ import type pg from 'pg'
 import { PERMISOS_ADMIN } from '../auth/permisos.ts'
 import { pool } from '../db.ts'
 
-const PERMISOS_CAJERO = ['ventas.ver', 'ventas.crear', 'productos.ver', 'historial.ver']
-
-function hoy() {
-  return new Date().toLocaleDateString('en-CA')
-}
-
 function hace(dias: number) {
   const d = new Date()
   d.setDate(d.getDate() + dias)
@@ -118,7 +112,7 @@ export async function activarCuenta(
       [usuarioId, nombre, datos.telefono.replace(/\D/g, ''), sucursalId, [...PERMISOS_ADMIN]],
     )
 
-    await sembrarDemo(client, cuentaId, sucursalId, correo)
+    await sembrarDemo(client, cuentaId, sucursalId, nombre)
 
     await client.query(
       `INSERT INTO bitacora (autor, accion, detalle, cuenta_id)
@@ -139,25 +133,10 @@ async function sembrarDemo(
   client: pg.PoolClient,
   cuentaId: string,
   sucursalId: string,
-  titularCorreo: string,
+  nombreCajeroDemo: string,
 ) {
-  const hashCajero = (
-    await client.query<{ hash: string }>(`SELECT crypt('ipaletitas-dev', gen_salt('bf')) AS hash`)
-  ).rows[0]!.hash
-
-  const correoCajero = `laura.${cuentaId.replace(/-/g, '').slice(0, 10)}@ejemplo.com`
-  await client.query(
-    `INSERT INTO usuarios (
-       cuenta_id, sucursal_id, nombre, correo, telefono, puesto, fecha_ingreso,
-       rol, activo, password_hash, permisos
-     ) VALUES (
-       $1, $2, 'Laura Méndez', $6, '5534567890', 'Cajera', $3::date,
-       'Cajero', true, $4, $5::text[]
-     )
-     ON CONFLICT (cuenta_id, correo) DO NOTHING`,
-    [cuentaId, sucursalId, hoy(), hashCajero, PERMISOS_CAJERO, correoCajero],
-  )
-  void titularCorreo
+  // Solo catálogo y ventas de ejemplo. El equipo lo arma el dueño en Usuarios.
+  const cajeroDemo = nombreCajeroDemo.trim() || 'Administrador'
 
   const catalogo: [string, string, number, number, number, string | null][] = [
     ['Paleta de mango', 'Paletas de agua', 18, 7, 12, hace(-3)],
@@ -210,9 +189,9 @@ async function sembrarDemo(
       const v = await client.query<{ id: string }>(
         `INSERT INTO ventas (
            cuenta_id, sucursal_id, folio, fecha, cajero_nombre, metodo_pago, total, recibido
-         ) VALUES ($1, $2, $3, $4, 'Laura Méndez', $5::metodo_pago_venta, $6, $6)
+         ) VALUES ($1, $2, $3, $4, $5, $6::metodo_pago_venta, $7, $7)
          RETURNING id`,
-        [cuentaId, sucursalId, folio++, fecha.toISOString(), metodos[t % metodos.length], total],
+        [cuentaId, sucursalId, folio++, fecha.toISOString(), cajeroDemo, metodos[t % metodos.length], total],
       )
       for (const p of partidas) {
         await client.query(

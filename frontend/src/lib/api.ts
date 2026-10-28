@@ -83,10 +83,10 @@ export function registrarApi(correo: string, password: string) {
   })
 }
 
-export function loginApi(correo: string, password: string, comoAdmin = false) {
+export function loginApi(correo: string, password: string) {
   return pedir<RespuestaAuth>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ correo, password, comoAdmin }),
+    body: JSON.stringify({ correo, password }),
   })
 }
 
@@ -109,7 +109,12 @@ export function terminarTutorialApi() {
   return pedir<SnapshotNegocio>('/api/negocio/tutorial/terminar', { method: 'POST' })
 }
 
-export function guardarMarcaApi(marca: { logo: string | null; color: string | null }) {
+export function guardarMarcaApi(marca: {
+  logo: string | null
+  color: string | null
+  iconos?: 'paleta' | 'genericos'
+  ambiente?: 'clasico' | 'tinte' | 'vivo'
+}) {
   return pedir<SnapshotNegocio>('/api/negocio/marca', {
     method: 'PUT',
     body: JSON.stringify(marca),

@@ -4,12 +4,10 @@ import { Eye, EyeOff } from '@lucide/vue'
 import PortadaAcceso from './acceso/PortadaAcceso.vue'
 import paliSaludando from '@/assets/Img/pali-saludando.webp'
 import { ErrorApi, guardarToken, loginApi } from '@/lib/api'
-import { DOMINIO_ADMIN, esCorreoAdmin } from '@/stores/admin'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
-const comoAdmin = ref(false)
 const error = ref('')
 const cargando = ref(false)
 
@@ -25,14 +23,11 @@ const emit = defineEmits<{
 }>()
 
 const handleLogin = async () => {
-  if (comoAdmin.value && !esCorreoAdmin(email.value)) {
-    error.value = `Esta cuenta no tiene permisos de administrador. Usa un correo ${DOMINIO_ADMIN}.`
-    return
-  }
   cargando.value = true
   error.value = ''
   try {
-    const sesion = await loginApi(email.value, password.value, comoAdmin.value)
+    // El backend decide: si el correo está en staff → consola; si no → panel del negocio.
+    const sesion = await loginApi(email.value, password.value)
     guardarToken(sesion.token)
     emit('ingresar', sesion.usuario.correo, sesion.tipo === 'staff')
   } catch (e) {
@@ -98,18 +93,10 @@ const handleLogin = async () => {
             </div>
           </div>
 
-          <label class="admin-opcion" :class="{ 'admin-opcion--activa': comoAdmin }">
-            <input v-model="comoAdmin" type="checkbox" :disabled="cargando" @change="error = ''" />
-            <span class="admin-texto">
-              <strong>Entrar como administrador</strong>
-              <small>Solo personal de iPaletitas ({{ DOMINIO_ADMIN }})</small>
-            </span>
-          </label>
-
           <p v-if="error" class="login-error" role="alert">{{ error }}</p>
 
           <button type="submit" class="btn-primary ip-boton" :disabled="cargando">
-            {{ cargando ? 'Entrando…' : comoAdmin ? 'Entrar a la consola' : 'Iniciar sesión' }}
+            {{ cargando ? 'Entrando…' : 'Iniciar sesión' }}
           </button>
         </form>
 
@@ -127,52 +114,6 @@ const handleLogin = async () => {
 <style src="../assets/Login.css"></style>
 
 <style scoped>
-.admin-opcion {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 3.25rem;
-  padding: 0.75rem 1rem;
-  border: 1.5px solid #d9dee6;
-  border-radius: 0.75rem;
-  background: #fff;
-  cursor: pointer;
-  transition:
-    border-color 160ms var(--ease-out),
-    background-color 160ms var(--ease-out);
-}
-
-.admin-opcion--activa {
-  border-color: var(--marca-600);
-  background: var(--marca-50);
-}
-
-.admin-opcion input {
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
-  accent-color: var(--marca-600);
-  cursor: pointer;
-}
-
-.admin-texto {
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
-}
-
-.admin-texto strong {
-  color: #0f172a;
-  font-size: 1rem;
-}
-
-.admin-texto small {
-  color: #475569;
-  font-size: 0.875rem;
-}
-
 .login-error {
   margin: 0;
   padding: 0.75rem 1rem;
@@ -180,11 +121,5 @@ const handleLogin = async () => {
   background: #fef2f2;
   color: #b91c1c;
   font-size: 0.9375rem;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .admin-opcion:not(.admin-opcion--activa):hover {
-    border-color: var(--marca-300);
-  }
 }
 </style>

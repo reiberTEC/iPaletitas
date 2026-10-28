@@ -7,6 +7,7 @@ export type Seccion =
   | 'entradas'
   | 'caducados'
   | 'historial'
+  | 'ganancias'
   | 'usuarios'
   | 'sucursales'
   | 'marca'
@@ -20,6 +21,7 @@ const PERMISO_SECCION: Partial<Record<Seccion, Permiso>> = {
   entradas: 'entradas.ver',
   caducados: 'perdidas.ver',
   historial: 'historial.ver',
+  ganancias: 'ganancias.ver',
   usuarios: 'usuarios.ver',
   sucursales: 'sucursales.ver',
   marca: 'licencia.editar',

@@ -82,6 +82,15 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--marca-500) 22%, transparent); /* taste-skill-ignore: anillo de foco */
 }
 
+/* Chrome pinta el autofill de verde oliva; lo alineamos al formulario. */
+.login-container input:not([type='checkbox']):-webkit-autofill,
+.login-container input:not([type='checkbox']):-webkit-autofill:hover,
+.login-container input:not([type='checkbox']):-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
 .login-container .password-input-wrapper {
   position: relative;
   display: flex;

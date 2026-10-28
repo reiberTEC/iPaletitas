@@ -28,6 +28,50 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Ambiente de marca (Mi marca → Clásico / Tinte / Vivo) */
+  --panel-fondo: #f8fafc;
+  --riel-fondo: #ffffff;
+  --riel-borde: #e2e8f0;
+  --encabezado-fondo: #ffffff;
+  --saludo-fondo: var(--marca-600);
+}
+
+html[data-ambiente='tinte'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-50) 92%, #f8fafc);
+  --riel-fondo: color-mix(in oklab, var(--marca-50) 55%, #ffffff);
+  --riel-borde: color-mix(in oklab, var(--marca-200) 70%, #e2e8f0);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-50) 40%, #ffffff);
+  --saludo-fondo: linear-gradient(135deg, var(--marca-600), var(--marca-800));
+}
+
+html[data-ambiente='vivo'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-100) 48%, #f8fafc);
+  --riel-fondo: color-mix(in oklab, var(--marca-100) 42%, #ffffff);
+  --riel-borde: color-mix(in oklab, var(--marca-300) 55%, #e2e8f0);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-50) 55%, #ffffff);
+  --saludo-fondo: linear-gradient(125deg, var(--marca-500) 0%, var(--marca-700) 48%, var(--marca-900) 100%);
+}
+
+html.oscuro {
+  --panel-fondo: #080b12;
+  --riel-fondo: #0f141f;
+  --riel-borde: #1e293b;
+  --encabezado-fondo: #0f141f;
+}
+
+html.oscuro[data-ambiente='tinte'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-950) 55%, #080b12);
+  --riel-fondo: color-mix(in oklab, var(--marca-950) 40%, #0f141f);
+  --riel-borde: color-mix(in oklab, var(--marca-800) 45%, #1e293b);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-950) 35%, #0f141f);
+}
+
+html.oscuro[data-ambiente='vivo'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-950) 70%, #080b12);
+  --riel-fondo: color-mix(in oklab, var(--marca-900) 35%, #0f141f);
+  --riel-borde: color-mix(in oklab, var(--marca-700) 40%, #1e293b);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-950) 45%, #0f141f);
 }
 
 @theme {

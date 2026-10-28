@@ -9,6 +9,8 @@ Esquema alineado con el panel actual: cuentas, sucursales, usuarios, productos, 
 | `001_schema.sql` | Extensiones, tipos, tablas, índices y vista `v_stock_sucursal` |
 | `002_seed.sql` | Planes, cupones y staff `admin@ipaletitas.com` |
 | `003_auth_pagos.sql` | Tokens de contraseña + columnas Stripe en `cuentas` (migración) |
+| `004_iconos_marca.sql` | Estilo de iconos en Mi marca (`paleta` / `genericos`) |
+| `005_producto_icono.sql` | Columna `icono` por producto |
 | `crear.ps1` | Script Windows: crea la base y aplica los SQL |
 | `.env.example` | Plantilla de conexión para la API (punto 2) |
 

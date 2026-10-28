@@ -125,6 +125,40 @@ export function aplicarMarca(hex: string | null | undefined, raiz: HTMLElement =
   rampaActual.value = rampa
 }
 
+/** Cómo se tiñe el panel con el color de marca: solo acentos, tinte suave o entorno vivo. */
+export type AmbienteMarca = 'clasico' | 'tinte' | 'vivo'
+
+export const AMBIENTES: {
+  id: AmbienteMarca
+  titulo: string
+  texto: string
+}[] = [
+  {
+    id: 'clasico',
+    titulo: 'Clásico',
+    texto: 'Tu color en botones y acentos. El fondo y el menú se quedan neutros.',
+  },
+  {
+    id: 'tinte',
+    titulo: 'Tinte',
+    texto: 'El panel y el menú se tiñen suavemente con tu color. Más marca, sin saturar.',
+  },
+  {
+    id: 'vivo',
+    titulo: 'Vivo',
+    texto: 'Entorno completo: fondos con tu tono, menú teñido y saludo con más presencia.',
+  },
+]
+
+export function normalizarAmbiente(valor: unknown): AmbienteMarca {
+  return valor === 'tinte' || valor === 'vivo' ? valor : 'clasico'
+}
+
+/** Marca el entorno visual del panel (CSS lee `data-ambiente` en `<html>`). */
+export function aplicarAmbiente(ambiente: AmbienteMarca | null | undefined, raiz: HTMLElement = document.documentElement) {
+  raiz.dataset.ambiente = normalizarAmbiente(ambiente)
+}
+
 /* ---------- Lectura de colores de un logo ---------- */
 
 function cargarImagen(src: string) {

@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
-import PaletaIcon from '../icons/PaletaIcon.vue'
+import IconoProducto from '../icons/IconoProducto.vue'
 import UiButton from '../ui/Button.vue'
 import UiModal from '../ui/Modal.vue'
-import { colorCategoria } from './secciones'
 import { estado, registrarEntrada, stock, sucursalActiva, type Producto } from '@/stores/negocio'
 import { dinero } from '@/lib/formato'
 
@@ -40,7 +39,7 @@ async function guardar() {
     <form class="space-y-4" @submit.prevent="guardar">
       <div class="flex items-center gap-3 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
         <span class="grid size-12 shrink-0 place-items-center rounded-xl bg-white">
-          <PaletaIcon :variant="colorCategoria(producto.categoria)" :size="28" />
+          <IconoProducto :icono="producto.icono" :categoria="producto.categoria" :size="28" />
         </span>
         <div class="min-w-0 flex-1">
           <p class="truncate font-bold text-slate-900">{{ producto.nombre }}</p>

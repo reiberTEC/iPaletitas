@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Crown } from '@lucide/vue'
+import IconoProducto from '../../icons/IconoProducto.vue'
 import PaletaIcon from '../../icons/PaletaIcon.vue'
-import { colorCategoria } from '../secciones'
 import type { Posicion } from './periodos'
 import { dinero, plural } from '@/lib/formato'
 
@@ -27,7 +27,7 @@ const maximo = computed(() => ganador.value?.cantidad ?? 1)
         <span class="disco" aria-hidden="true" />
         <Crown class="corona size-7 text-yellow-500" aria-hidden="true" />
         <div class="ganador">
-          <PaletaIcon :variant="colorCategoria(ganador.categoria)" :size="84" />
+          <IconoProducto :icono="ganador.icono" :categoria="ganador.categoria" :size="84" />
         </div>
       </div>
 
