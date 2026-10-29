@@ -1,16 +1,21 @@
 # Blueprint para Render.com (punto 4: HTTPS + PWA).
-# En el dashboard de Render: New → Blueprint → este repo.
-# Luego pega DATABASE_URL (Postgres) y un JWT_SECRET fuerte.
+# New → Blueprint → repo, rama frontend.
+# Pega DATABASE_URL (Neon, con ?sslmode=require) y API_ORIGENES (URL de Render).
 
 services:
   - type: web
     name: ipaletitas
-    runtime: docker
+    runtime: node
     plan: free
+    # Node nativo: en el plan free el build Docker suele fallar o quedarse sin minutos.
+    buildCommand: cd frontend && npm ci && npm run build && cd ../backend && npm ci
+    startCommand: cd backend && npm run start
     healthCheckPath: /api/salud
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22.18.0"
       - key: JWT_SECRET
         generateValue: true
       - key: DATABASE_URL
