@@ -1,5 +1,11 @@
+import './assets/main.css'
+import './lib/tema'
+import { escucharInstalacion, marcarModoApp } from './lib/app'
+
 import { createApp } from 'vue'
 import App from './App.vue'
-import router from './router'
 
-createApp(App).use(router).mount('#app')
+marcarModoApp()
+escucharInstalacion()
+
+createApp(App).mount('#app')

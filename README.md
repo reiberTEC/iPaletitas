@@ -1,32 +1,43 @@
 # iPaletitas
 
-Sistema de gestión inteligente para micro y pequeños negocios.
-
 ## Estructura
 
 ```
 iPaletitas/
-├── frontend/   Aplicación web (Vue 3 + Vite + TypeScript)
-└── backend/    API (Django)
+├── database/   PostgreSQL (esquema + semilla)
+├── backend/    API (auth; más adelante el panel)
+└── frontend/   App Vue (PWA)
 ```
 
-## Frontend
+## Arranque en desarrollo
 
-```sh
+Necesitas **dos** terminales (Postgres ya creado en el punto 1).
+
+**1. API**
+
+```bat
+cd backend
+copy .env.example .env.local
+REM Edita .env.local: pon tu contraseña en DATABASE_URL
+npm install
+npm run dev
+```
+
+**2. Frontend**
+
+```bat
 cd frontend
 npm install
 npm run dev
 ```
 
-Más detalles en [`frontend/README.md`](frontend/README.md).
+## Publicar (HTTPS / PWA)
 
-## Backend
+Guía paso a paso: [`DEPLOY.md`](DEPLOY.md).
 
-```sh
-cd backend
-python -m venv .venv
-source .venv/bin/activate        # En Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+```bat
+npm run build --prefix frontend
+npm run start --prefix backend
 ```
 
-Los pasos para crear y levantar el proyecto Django están en [`backend/README.md`](backend/README.md).
+Más detalles: [`backend/README.md`](backend/README.md), [`frontend/README.md`](frontend/README.md), [`database/README.md`](database/README.md), [`APP.md`](APP.md).

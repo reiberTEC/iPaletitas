@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.env
+**/.env.local
+**/.git
+**/.impeccable
+**/.taste-skill
+**/coverage
+**/*.log
+frontend/servidor/.env.local

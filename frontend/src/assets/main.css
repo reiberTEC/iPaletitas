@@ -1,35 +1,166 @@
-@import './base.css';
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/unbounded/index.css';
+@import './base.css' layer(base);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@import './oscuro.css' layer(utilities);
+@import './sistema.css';
+@import './oscuro-global.css';
+
+/*
+  Marca blanca: la escala "blue" de Tailwind es la línea de color del negocio.
+  lib/marca.ts reescribe --marca-* con la escala calculada a partir de su logo.
+*/
+:root {
+  --marca: #2456d6;
+  --marca-50: #f3f7ff;
+  --marca-100: #e2ecff;
+  --marca-200: #c7daff;
+  --marca-300: #9dbdff;
+  --marca-400: #6c9aff;
+  --marca-500: #3f75f8;
+  --marca-600: #295bdc;
+  --marca-700: #1c48bb;
+  --marca-800: #123797;
+  --marca-900: #0a2773;
+  --marca-950: #04164c;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Ambiente de marca (Mi marca → Clásico / Tinte / Vivo) */
+  --panel-fondo: #f8fafc;
+  --riel-fondo: #ffffff;
+  --riel-borde: #e2e8f0;
+  --encabezado-fondo: #ffffff;
+  --saludo-fondo: var(--marca-600);
+}
+
+html[data-ambiente='tinte'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-50) 92%, #f8fafc);
+  --riel-fondo: color-mix(in oklab, var(--marca-50) 55%, #ffffff);
+  --riel-borde: color-mix(in oklab, var(--marca-200) 70%, #e2e8f0);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-50) 40%, #ffffff);
+  --saludo-fondo: linear-gradient(135deg, var(--marca-600), var(--marca-800));
+}
+
+html[data-ambiente='vivo'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-100) 48%, #f8fafc);
+  --riel-fondo: color-mix(in oklab, var(--marca-100) 42%, #ffffff);
+  --riel-borde: color-mix(in oklab, var(--marca-300) 55%, #e2e8f0);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-50) 55%, #ffffff);
+  --saludo-fondo: linear-gradient(125deg, var(--marca-500) 0%, var(--marca-700) 48%, var(--marca-900) 100%);
+}
+
+html.oscuro {
+  --panel-fondo: #080b12;
+  --riel-fondo: #0f141f;
+  --riel-borde: #1e293b;
+  --encabezado-fondo: #0f141f;
+}
+
+html.oscuro[data-ambiente='tinte'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-950) 55%, #080b12);
+  --riel-fondo: color-mix(in oklab, var(--marca-950) 40%, #0f141f);
+  --riel-borde: color-mix(in oklab, var(--marca-800) 45%, #1e293b);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-950) 35%, #0f141f);
+}
+
+html.oscuro[data-ambiente='vivo'] {
+  --panel-fondo: color-mix(in oklab, var(--marca-950) 70%, #080b12);
+  --riel-fondo: color-mix(in oklab, var(--marca-900) 35%, #0f141f);
+  --riel-borde: color-mix(in oklab, var(--marca-700) 40%, #1e293b);
+  --encabezado-fondo: color-mix(in oklab, var(--marca-950) 45%, #0f141f);
+}
+
+@theme {
+  --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Unbounded Variable', 'Archivo Variable', ui-sans-serif, sans-serif;
+
+  --color-blue-50: var(--marca-50);
+  --color-blue-100: var(--marca-100);
+  --color-blue-200: var(--marca-200);
+  --color-blue-300: var(--marca-300);
+  --color-blue-400: var(--marca-400);
+  --color-blue-500: var(--marca-500);
+  --color-blue-600: var(--marca-600);
+  --color-blue-700: var(--marca-700);
+  --color-blue-800: var(--marca-800);
+  --color-blue-900: var(--marca-900);
+  --color-blue-950: var(--marca-950);
+
+  --color-brand: var(--marca-600);
+  --color-brand-dark: var(--marca-700);
+  --color-gold: #fcd34d;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  max-width: none;
+  min-height: 100%;
+  display: block;
+  margin: 0;
+}
 
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  font-weight: normal;
+  min-height: 100dvh;
+  padding: 0;
 }
 
-a,
-.green {
+html {
+  scroll-behavior: smooth;
+  caret-color: var(--marca-600);
+  accent-color: var(--marca-600);
+  scrollbar-color: color-mix(in oklab, var(--marca-600) 35%, #cbd5e1) transparent;
+}
+
+::selection {
+  background: var(--marca-200);
+  color: var(--marca-950);
+}
+
+html.oscuro ::selection {
+  background: var(--marca-700);
+  color: #fff;
+}
+
+:focus-visible {
+  outline: 2px solid var(--marca-500);
+  outline-offset: 2px;
+}
+
+a {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  text-underline-offset: 0.2em;
 }
 
-@media (hover: hover) {
-  a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
-  }
+table,
+.tabular-nums,
+.cifra {
+  font-variant-numeric: tabular-nums;
 }
 
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
 
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
   }
 }
