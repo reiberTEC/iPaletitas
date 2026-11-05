@@ -1,0 +1,46 @@
+const moneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
+const monedaEntera = new Intl.NumberFormat('es-MX', {
+  style: 'currency',
+  currency: 'MXN',
+  maximumFractionDigits: 0,
+})
+const soloFecha = new Intl.DateTimeFormat('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })
+const fechaHora = new Intl.DateTimeFormat('es-MX', {
+  day: '2-digit',
+  month: 'short',
+  hour: '2-digit',
+  minute: '2-digit',
+})
+const soloHora = new Intl.DateTimeFormat('es-MX', { hour: '2-digit', minute: '2-digit' })
+
+export const dinero = (valor: number) => moneda.format(valor)
+export const precio = (valor: number) => monedaEntera.format(valor)
+export const fecha = (iso: string) => soloFecha.format(new Date(iso))
+export const fechaYHora = (iso: string) => fechaHora.format(new Date(iso))
+export const hora = (iso: string) => soloHora.format(new Date(iso))
+// "2025-01-20" se interpretaría en UTC y en México saldría un día antes; se fuerza la hora local.
+export const fechaDia = (dia: string) => soloFecha.format(new Date(`${dia}T00:00:00`))
+
+export function mismoDia(iso: string, dia = new Date()) {
+  return new Date(iso).toDateString() === dia.toDateString()
+}
+
+export function nombreDesdeCorreo(correo: string, respaldo = 'Usuario') {
+  const usuario = correo.split('@')[0] ?? ''
+  const limpio = usuario.replace(/[._-]+/g, ' ').trim()
+  return limpio ? limpio.replace(/\b\w/g, (letra) => letra.toUpperCase()) : respaldo
+}
+
+const UNIONES = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e'])
+const letras = new Intl.Segmenter('es-MX', { granularity: 'grapheme' })
+const primeraLetra = (palabra: string) => letras.segment(palabra)[Symbol.iterator]().next().value?.segment ?? ''
+
+/** "Paletería de la Esquina" → "PE": primera y última palabra, sin "de", "la"… */
+export function iniciales(nombre: string) {
+  const palabras = nombre.split(/\s+/).filter((p) => p && !UNIONES.has(p.toLowerCase()))
+  const elegidas = palabras.length > 1 ? [palabras[0]!, palabras[palabras.length - 1]!] : palabras
+  return elegidas.map((p) => primeraLetra(p).toUpperCase()).join('') || '·'
+}
+
+export const plural = (cantidad: number, singular: string, varios: string) =>
+  `${cantidad.toLocaleString('es-MX')} ${cantidad === 1 ? singular : varios}`

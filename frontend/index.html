@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+  <head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+    <meta name="description" content="Aplicación de punto de venta e inventario para tu mostrador. Instálala en escritorio, tableta o celular.">
+    <meta name="application-name" content="iPaletitas">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="iPaletitas">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#295bdc" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)">
+    <title>iPaletitas · App de punto de venta</title>
+    <script>
+      try {
+        if (localStorage.getItem('ipaletitas:tema') === 'oscuro') document.documentElement.classList.add('oscuro')
+        var solo =
+          window.matchMedia('(display-mode: standalone)').matches ||
+          window.matchMedia('(display-mode: fullscreen)').matches ||
+          (navigator.standalone === true)
+        if (solo) document.documentElement.classList.add('app-instalada')
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,211 @@
+/* Entrar y crear cuenta: foto con letrero de estación a la izquierda, formulario a la derecha.
+   Todo va bajo .login-container para no tocar los campos del panel. */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  background: #f5f6f8;
+  color: #0f172a;
+}
+
+.login-container .right-panel {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  padding: 2rem 1.25rem max(2.5rem, env(safe-area-inset-bottom));
+}
+
+.login-container .form-wrapper {
+  width: 100%;
+  max-width: 26rem;
+}
+
+.login-container .title {
+  margin: 0;
+  color: #0f172a;
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.login-container .subtitle {
+  margin: 0.75rem 0 2rem;
+  color: #475569;
+  font-size: 1.0625rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.login-container .login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.login-container .input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-container .input-group label {
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.login-container input:not([type='checkbox']) {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #d9dee6;
+  border-radius: 0.625rem;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 1rem;
+  transition:
+    border-color 160ms var(--ease-out),
+    box-shadow 160ms var(--ease-out);
+}
+
+.login-container input::placeholder {
+  color: #7b8798;
+}
+
+.login-container input:not([type='checkbox']):focus {
+  outline: none;
+  border-color: var(--marca-500);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--marca-500) 22%, transparent); /* taste-skill-ignore: anillo de foco */
+}
+
+/* Chrome pinta el autofill de verde oliva; lo alineamos al formulario. */
+.login-container input:not([type='checkbox']):-webkit-autofill,
+.login-container input:not([type='checkbox']):-webkit-autofill:hover,
+.login-container input:not([type='checkbox']):-webkit-autofill:focus {
+  -webkit-text-fill-color: #0f172a;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 99999s ease-in-out 0s;
+}
+
+.login-container .password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-container .password-input-wrapper input {
+  padding-right: 3.25rem;
+}
+
+.login-container .btn-eye {
+  position: absolute;
+  right: 0.25rem;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: none;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.login-container .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  margin-top: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: var(--marca-600);
+  color: #fff;
+  font: inherit;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.login-container .btn-primary:focus-visible,
+.login-container .btn-eye:focus-visible {
+  outline: 3px solid var(--marca-400);
+  outline-offset: 2px;
+}
+
+.login-container .links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  font-size: 1rem;
+}
+
+.login-container .link-forgot,
+.login-container .link-register a {
+  color: var(--marca-700);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.login-container .link-forgot {
+  align-self: flex-start;
+}
+
+.login-container .link-register {
+  margin: 0;
+  color: #475569;
+}
+
+/* Entrada única del formulario: sube poco y rápido, sin rebote */
+.login-container .form-wrapper {
+  animation: acceso-entra 500ms var(--ease-out) both;
+}
+
+@keyframes acceso-entra {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .login-container .btn-primary:hover {
+    background: var(--marca-700);
+  }
+
+  .login-container .btn-eye:hover {
+    color: #0f172a;
+  }
+
+  .login-container .link-forgot:hover,
+  .login-container .link-register a:hover {
+    color: var(--marca-800);
+  }
+}
+
+@media (min-width: 851px) {
+  .login-container {
+    flex-direction: row;
+  }
+
+  .login-container .right-panel {
+    align-items: center;
+    padding: 3rem max(3rem, env(safe-area-inset-right)) 3rem 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-container .form-wrapper {
+    animation: none;
+  }
+}
