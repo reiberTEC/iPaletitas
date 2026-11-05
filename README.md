@@ -1,19 +1,20 @@
 # iPaletitas
 
-## Estructura
+Aplicación Vue con API Node.js y base de datos PostgreSQL.
 
+## Levantar el servicio local
+
+Necesitas Docker Engine con Compose v2 o Docker Desktop en ejecución. Desde la raíz del proyecto:
+
+```sh
+docker compose up --build -d --wait
 ```
-iPaletitas/
-├── database/   PostgreSQL (esquema + semilla)
-├── backend/    API (auth; más adelante el panel)
-└── frontend/   App Vue (PWA)
-```
 
-## Arranque en desarrollo
+Abre **http://localhost:8788**. El comando construye la aplicación, inicia PostgreSQL y espera a que ambos servicios estén listos. No necesitas instalar Node.js ni PostgreSQL ni crear archivos `.env`.
 
-Necesitas **dos** terminales (Postgres ya creado en el punto 1).
+La primera vez se inicializa la base con los scripts de `database/`. Acceso de staff: **admin@ipaletitas.com** / **ipaletitas-dev**.
 
-**1. API**
+## Comandos útiles
 
 ```bat
 cd backend
@@ -54,7 +55,7 @@ npm install
 npm run dev
 ```
 
-**2. Frontend**
+Los datos se conservan en un volumen de Docker al detener el servicio. **`docker compose down -v` elimina la base y sus datos**. Los scripts SQL solo se ejecutan automáticamente con el volumen vacío; para actualizar una base existente, aplica las migraciones pendientes explícitamente.
 
 ```bat
 Edita `backend/.env.local`:
@@ -80,7 +81,7 @@ npm install
 npm run dev
 ```
 
-## Publicar (HTTPS / PWA)
+En ese caso, abre **http://localhost:8790**.
 
 Guía paso a paso: [`DEPLOY.md`](DEPLOY.md).
 

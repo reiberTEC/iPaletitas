@@ -425,10 +425,6 @@ export async function sincronizarDesdeApi() {
 
 export async function guardarMarca(marca: Partial<Marca>) {
   const siguiente: Marca = {
-    logo: null,
-    color: null,
-    iconos: 'paleta',
-    ambiente: 'clasico',
     ...estado.marca,
     ...marca,
   }
