@@ -9,6 +9,10 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
+
+# Programa de Windows (se generan con npm run dist en escritorio/)
+escritorio/recursos/
+escritorio/salida/
 dist
 dist-ssr
 coverage

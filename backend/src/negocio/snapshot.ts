@@ -22,6 +22,7 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
     color_marca: string | null
     iconos_estilo?: string | null
     ambiente_marca?: string | null
+    mascota_panel?: string | null
     fact_pais: string
     fact_estado: string
     fact_direccion: string
@@ -271,6 +272,7 @@ export async function snapshotNegocio(cuentaId: string, correoSesion: string) {
       color: c.color_marca,
       iconos: c.iconos_estilo === 'genericos' ? 'genericos' : 'paleta',
       ambiente: c.ambiente_marca === 'tinte' || c.ambiente_marca === 'vivo' ? c.ambiente_marca : 'clasico',
+      mascota: c.mascota_panel === 'pali' || c.mascota_panel === 'cafe' ? c.mascota_panel : 'ninguna',
     },
     planElegido: null,
     sucursalActivaId: usuarioSesion?.sucursal_id ?? sucursales[0]?.id ?? '',

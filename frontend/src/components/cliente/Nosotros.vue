@@ -2,24 +2,25 @@
 import { Check, Rocket, Sparkles, Star, Target, Telescope, Trophy } from '@lucide/vue'
 import paliSaludando from '@/assets/Img/pali-saludando.webp'
 import UiCard from '../ui/Card.vue'
+import { estado } from '@/stores/negocio'
 
 const pilares = [
   {
     icono: Target,
     titulo: 'Misión',
     texto:
-      'Impulsar el crecimiento de las paleterías y neverías con herramientas digitales sencillas, accesibles y pensadas para su operación diaria.',
+      'Impulsar el mostrador con herramientas sencillas para cobrar, surtir y ver cómo va el negocio cada día.',
   },
   {
     icono: Telescope,
     titulo: 'Visión',
-    texto: 'Ser la plataforma de referencia en Latinoamérica para la administración de negocios de paletas y helados artesanales.',
+    texto: 'Ser la app de referencia en Latinoamérica para el comercio de mostrador.',
   },
   {
     icono: Rocket,
     titulo: 'Objetivo',
     texto:
-      'Reducir el tiempo que nuestros clientes dedican a tareas administrativas para que se enfoquen en lo que mejor saben hacer: crear sabores que enamoran.',
+      'Quitar tiempo de administración para que el negocio se quede en lo que ya sabe hacer.',
   },
 ]
 
@@ -79,6 +80,7 @@ const redes = [
   <div class="mx-auto flex max-w-6xl flex-col gap-7">
     <section class="relative overflow-hidden rounded-3xl bg-blue-600 p-8 text-white sm:p-12">
       <img
+        v-if="estado.marca.mascota === 'pali'"
         :src="paliSaludando"
         alt=""
         aria-hidden="true"
@@ -86,9 +88,8 @@ const redes = [
       />
       <h1 class="font-display text-4xl font-semibold tracking-tight sm:text-5xl">Quiénes somos</h1>
       <p class="mt-4 max-w-2xl text-lg leading-8 text-white md:pr-48">
-        iPaletitas es una plataforma de gestión creada para paleterías y neverías. Nacimos para que los pequeños y
-        medianos negocios de paletas y helados controlen sus productos, ventas y personal desde un solo lugar, sin
-        complicaciones.
+        iPaletitas es el punto de venta del mostrador. Cobras, surtes y ves tus ventas desde un solo lugar, sea
+        cafetería, abarrotes, taquería o paletería.
       </p>
     </section>
 

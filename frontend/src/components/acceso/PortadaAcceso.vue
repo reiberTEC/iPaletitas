@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import PaletaIcon from '../icons/PaletaIcon.vue'
 import pina from '@/assets/Img/Piña.jpg'
+import { esEscritorio } from '@/lib/plataforma'
 
 defineProps<{ frase: string; mascota: string; mascotaAlt: string }>()
 defineEmits(['irHome'])
@@ -10,7 +11,11 @@ defineEmits(['irHome'])
   <aside class="portada">
     <img :src="pina" alt="" class="portada-foto" />
 
-    <button type="button" class="portada-marca ip-boton" @click="$emit('irHome')">
+    <div v-if="esEscritorio" class="portada-marca">
+      <span class="ip-picto size-11"><PaletaIcon variant="white" :size="26" /></span>
+      <span class="font-display">iPaletitas</span>
+    </div>
+    <button v-else type="button" class="portada-marca ip-boton" @click="$emit('irHome')">
       <span class="ip-picto size-11"><PaletaIcon variant="white" :size="26" /></span>
       <span class="font-display">iPaletitas</span>
       <span class="sr-only">, volver al inicio</span>
@@ -60,6 +65,9 @@ defineEmits(['irHome'])
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+button.portada-marca {
   cursor: pointer;
 }
 

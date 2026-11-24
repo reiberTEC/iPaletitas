@@ -2,7 +2,41 @@ import { createHash, randomBytes } from 'node:crypto'
 import { query } from '../db.ts'
 
 function frontendUrl() {
-  return (process.env.FRONTEND_URL ?? 'http://localhost:5173').replace(/\/+$/, '')
+  return (process.env.FRONTEND_URL ?? 'http://localhost:8788').replace(/\/+$/, '')
+}
+
+let tablaTokensLista = false
+
+/** La tabla vive en 003_auth_pagos.sql, que Docker solo corre al crear el volumen. */
+export async function asegurarTablaPasswordTokens() {
+  if (tablaTokensLista) return
+  await query(`CREATE TABLE IF NOT EXISTS password_tokens (
+    id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario_id   uuid REFERENCES usuarios (id) ON DELETE CASCADE,
+    staff_id     uuid REFERENCES staff (id) ON DELETE CASCADE,
+    token_hash   text NOT NULL,
+    proposito    text NOT NULL,
+    vence        timestamptz NOT NULL,
+    usado_en     timestamptz,
+    creado_en    timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT password_tokens_sujeto_chk CHECK (
+      (usuario_id IS NOT NULL AND staff_id IS NULL)
+      OR (usuario_id IS NULL AND staff_id IS NOT NULL)
+    )
+  )`)
+  await query(`ALTER TABLE password_tokens DROP CONSTRAINT IF EXISTS password_tokens_proposito_check`)
+  await query(
+    `ALTER TABLE password_tokens
+     ADD CONSTRAINT password_tokens_proposito_check
+     CHECK (proposito IN ('recuperar', 'invitar'))`,
+  )
+  await query(
+    `CREATE INDEX IF NOT EXISTS password_tokens_hash_idx ON password_tokens (token_hash) WHERE usado_en IS NULL`,
+  )
+  await query(
+    `CREATE INDEX IF NOT EXISTS password_tokens_usuario_idx ON password_tokens (usuario_id) WHERE usado_en IS NULL`,
+  )
+  tablaTokensLista = true
 }
 
 const PASS_MIN = 8
@@ -38,6 +72,7 @@ export async function crearTokenPassword(opts: {
   staffId?: string
   proposito: 'recuperar' | 'invitar'
 }) {
+  await asegurarTablaPasswordTokens()
   const token = generarTokenPlano()
   const horas = opts.proposito === 'invitar' ? DIAS_INVITAR * 24 : HORAS_RECUPERAR
   const vence = new Date(Date.now() + horas * 3_600_000)

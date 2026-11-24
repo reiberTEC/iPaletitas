@@ -47,6 +47,7 @@ import {
   semanaGratis,
   accesoRevocado,
   agotados,
+  avisoEnlace,
   caducados,
   cambiarSucursal,
   diasRestantes,
@@ -124,7 +125,7 @@ const descripcionSesion = computed(() =>
     : `${usuarioActual.value?.puesto ?? ''} · ${usuarioActual.value?.rol ?? ''}`,
 )
 
-const activa = ref<Seccion>('inicio')
+const activa = ref<Seccion>(avisoEnlace.value ? 'usuarios' : 'inicio')
 const menuAbierto = ref(false)
 
 /* En pantallas grandes el menú queda fijo; en celular y tableta es un cajón. */

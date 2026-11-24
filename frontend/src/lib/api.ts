@@ -114,6 +114,7 @@ export function guardarMarcaApi(marca: {
   color: string | null
   iconos?: 'paleta' | 'genericos'
   ambiente?: 'clasico' | 'tinte' | 'vivo'
+  mascota?: 'ninguna' | 'pali' | 'cafe'
 }) {
   return pedir<SnapshotNegocio>('/api/negocio/marca', {
     method: 'PUT',

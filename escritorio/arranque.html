@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es-MX">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>iPaletitas</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        display: grid;
+        place-items: center;
+        background: #0b0f17;
+        color: #e2e8f0;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      main {
+        display: grid;
+        gap: 0.9rem;
+        justify-items: center;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .linea {
+        width: 11rem;
+        height: 0.3rem;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #1c2636;
+      }
+      .linea::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: inherit;
+        background: #295bdc;
+        animation: correr 1.2s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+      }
+      p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.95rem;
+      }
+      @keyframes correr {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(260%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .linea::after {
+          animation: none;
+          width: 100%;
+          opacity: 0.6;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>iPaletitas</h1>
+      <div class="linea" aria-hidden="true"></div>
+      <p id="estado" role="status">Abriendo…</p>
+    </main>
+    <script>
+      window.avisar = (texto) => {
+        document.getElementById('estado').textContent = texto
+      }
+    </script>
+  </body>
+</html>

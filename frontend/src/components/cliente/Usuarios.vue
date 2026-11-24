@@ -26,7 +26,10 @@ import {
   TODOS_LOS_PERMISOS,
   actualizarUsuario,
   crearUsuario,
+  avisoEnlace,
   invitarUsuario,
+  solicitarLoginParaInvitar,
+  usaApi,
   eliminarUsuario,
   esSesionActual,
   esTitular,
@@ -50,7 +53,8 @@ const totalPermisos = TODOS_LOS_PERMISOS.length
 
 const busqueda = ref('')
 const filtroRol = ref<Rol | ''>('')
-const enlaceInvitacion = ref('')
+const enlaceInvitacion = ref(avisoEnlace.value)
+if (avisoEnlace.value) avisoEnlace.value = ''
 const copiadoInvitacion = ref(false)
 
 const activos = computed(() => estado.usuarios.filter((u) => u.activo))
@@ -134,12 +138,20 @@ async function guardar(datos: DatosUsuario) {
 }
 
 async function regenerarInvitacion(usuario: Usuario) {
-  const enlace = await invitarUsuario(usuario.id)
-  if (enlace) {
-    enlaceInvitacion.value = enlace
-    notificar(`Enlace listo para ${usuario.nombre}.`)
-  } else {
-    notificar('No se pudo generar el enlace. ¿Está corriendo la API?')
+  if (!usaApi()) {
+    solicitarLoginParaInvitar(usuario)
+    return
+  }
+  try {
+    const enlace = await invitarUsuario(usuario.id)
+    if (enlace) {
+      enlaceInvitacion.value = enlace
+      notificar(`Enlace listo para ${usuario.nombre}.`)
+      return
+    }
+    notificar('No se pudo generar el enlace.')
+  } catch (e) {
+    notificar(e instanceof Error ? e.message : 'No se pudo generar el enlace.')
   }
 }
 

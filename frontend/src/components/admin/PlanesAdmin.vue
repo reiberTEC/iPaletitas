@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { Check, Clock, Package, Store, Users } from '@lucide/vue'
 import { mascotaPlan } from '../planes/mascotas'
 import UiBadge from '../ui/Badge.vue'
+import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
-import { acentoPlan, precioPlan, type Plan } from '@/stores/catalogo'
+import { acentoPlan, guardarTopesPlan, precioPlan, type Plan, type PlanId } from '@/stores/catalogo'
 import { cuentas, estadoDe, metricas } from '@/stores/admin'
 import { dinero, precio } from '@/lib/formato'
 import { tema } from '@/lib/tema'
@@ -22,6 +23,31 @@ function detalle(plan: Plan) {
 }
 
 const mrrTotal = computed(() => Math.max(1, metricas.value.mrr))
+
+const editando = ref<PlanId | null>(null)
+const aviso = ref('')
+const form = reactive({ sucursales: 1, usuarios: 1, productos: 1, historialMeses: 1 })
+
+function abrir(plan: Plan) {
+  editando.value = plan.id
+  form.sucursales = plan.limites.sucursales
+  form.usuarios = plan.limites.usuarios
+  form.productos = plan.limites.productos
+  form.historialMeses = plan.limites.historialMeses
+  aviso.value = ''
+}
+
+function guardar(plan: Plan) {
+  const limites = {
+    sucursales: Math.max(1, Math.floor(form.sucursales) || 1),
+    usuarios: Math.max(1, Math.floor(form.usuarios) || 1),
+    productos: Math.max(1, Math.floor(form.productos) || 1),
+    historialMeses: Math.max(1, Math.floor(form.historialMeses) || 1),
+  }
+  guardarTopesPlan(plan.id, limites)
+  aviso.value = `Topes de ${plan.nombre} guardados. Las tarjetas de precios ya usan estos cupos.`
+  editando.value = null
+}
 </script>
 
 <template>
@@ -74,6 +100,30 @@ const mrrTotal = computed(() => Math.max(1, metricas.value.mrr))
           <li class="flex items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-2"><Clock class="size-3.5 text-blue-600" /> {{ limite(p.plan.limites.historialMeses, 'meses') }}</li>
         </ul>
 
+        <form v-if="editando === p.plan.id" class="mt-5 grid grid-cols-2 gap-3" @submit.prevent="guardar(p.plan)">
+          <label class="text-xs font-semibold text-slate-600">
+            Sucursales
+            <input v-model.number="form.sucursales" type="number" min="1" class="ip-input mt-1" required />
+          </label>
+          <label class="text-xs font-semibold text-slate-600">
+            Usuarios
+            <input v-model.number="form.usuarios" type="number" min="1" class="ip-input mt-1" required />
+          </label>
+          <label class="text-xs font-semibold text-slate-600">
+            Productos
+            <input v-model.number="form.productos" type="number" min="1" class="ip-input mt-1" required />
+          </label>
+          <label class="text-xs font-semibold text-slate-600">
+            Meses de historial
+            <input v-model.number="form.historialMeses" type="number" min="1" class="ip-input mt-1" required />
+          </label>
+          <div class="col-span-2 flex gap-2">
+            <UiButton type="submit" size="sm">Guardar topes</UiButton>
+            <UiButton type="button" variant="ghost" size="sm" @click="editando = null">Cancelar</UiButton>
+          </div>
+        </form>
+        <UiButton v-else class="mt-5" variant="outline" size="sm" @click="abrir(p.plan)">Cambiar topes</UiButton>
+
         <ul class="mt-5 flex-1 list-none space-y-2 border-t border-slate-100 p-0 pt-5 text-sm text-slate-600">
           <li v-for="item in p.plan.incluye" :key="item" class="flex items-start gap-2">
             <Check class="mt-0.5 size-4 shrink-0 text-emerald-500" />
@@ -83,9 +133,10 @@ const mrrTotal = computed(() => Math.max(1, metricas.value.mrr))
       </UiCard>
     </div>
 
+    <p v-if="aviso" class="mt-6 text-sm font-semibold text-emerald-700" role="status">{{ aviso }}</p>
     <p class="mt-6 text-sm text-slate-500">
-      Para cambiar precios o límites edita <code class="rounded bg-slate-200 px-1.5 py-0.5 text-xs">src/stores/catalogo.ts</code>; los clientes
-      verán el cambio en la pantalla de licencias.
+      Ningún plan queda ilimitado: un cupo cerrado evita que sucursales, usuarios, productos o historial crezcan sin tope en la base.
+      «Cambiar topes» guarda los números en este navegador y actualiza las tarjetas de precios.
     </p>
   </div>
 </template>

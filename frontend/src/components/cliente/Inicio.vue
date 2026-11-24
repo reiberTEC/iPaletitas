@@ -23,11 +23,13 @@ import {
   TrendingUp,
   TriangleAlert,
 } from '@lucide/vue'
-import pina from '@/assets/Img/Piña.jpg'
 import paliSenalando from '@/assets/Img/pali-senalando.webp'
 import paliPulgar from '@/assets/Img/pali-pulgar.webp'
 import paliPensando from '@/assets/Img/pali-pensando.webp'
 import paliSaludando from '@/assets/Img/pali-saludando.webp'
+import tazaSaludo from '@/assets/Img/taza-saludo.png'
+import cafeEscena from '@/assets/Img/cafe-escena.jpg'
+import tazaPiensa from '@/assets/Img/taza-piensa.png'
 import UiBadge from '../ui/Badge.vue'
 import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
@@ -64,10 +66,7 @@ const puedeSurtir = computed(() => puede('entradas.crear'))
 
 const ventaVista = ref<Venta | null>(null)
 
-const saludo = computed(() => {
-  const h = new Date().getHours()
-  return h < 12 ? 'Buenos días' : h < 19 ? 'Buenas tardes' : 'Buenas noches'
-})
+const nombreNegocio = computed(() => estado.licencia?.negocio?.trim() || 'tu negocio')
 
 const deHoy = computed(() => ventasSucursal.value.filter((v) => mismoDia(v.fecha)))
 const totalHoy = computed(() => deHoy.value.reduce((suma, v) => suma + v.total, 0))
@@ -180,6 +179,16 @@ function masVendida(ventas: Venta[]) {
   return [...piezas.values()].sort((a, b) => b.cantidad - a.cantidad)[0] ?? null
 }
 
+const figuras = computed(() => {
+  if (estado.marca.mascota === 'pali') {
+    return { id: 'pali' as const, saludo: paliSaludando, senala: paliSenalando, celebra: paliPulgar, piensa: paliPensando }
+  }
+  if (estado.marca.mascota === 'cafe') {
+    return { id: 'cafe' as const, saludo: tazaSaludo, senala: tazaPiensa, celebra: tazaSaludo, piensa: tazaPiensa }
+  }
+  return null
+})
+
 const paletaDelDia = computed(() => {
   const hoy = masVendida(deHoy.value)
   if (hoy) return { ...hoy, periodo: 'hoy' }
@@ -285,12 +294,15 @@ const kpis = computed(() => [
 <template>
   <div>
     <section
-      class="saludo-hero mb-6 grid overflow-hidden rounded-3xl text-white md:grid-cols-[minmax(0,1fr)_minmax(0,38%)]"
+      :class="[
+        'saludo-hero mb-6 grid overflow-hidden rounded-3xl text-white',
+        figuras && 'md:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]',
+      ]"
     >
       <div class="p-7 sm:p-10">
         <UiBadge variant="outline">Sucursal {{ sucursalActiva?.nombre }}</UiBadge>
         <h1 class="font-display mt-4 text-3xl font-semibold [overflow-wrap:anywhere] sm:text-4xl">
-          {{ saludo }}, {{ estado.sesion?.nombre?.split(' ')[0] }}
+          Bienvenido a {{ nombreNegocio }}
         </h1>
         <p class="mt-2 max-w-[52ch]">Este es el resumen de tu negocio. ¿Qué quieres hacer ahora?</p>
         <div v-if="puedeVer('venta') || puedeSurtir" class="mt-6 flex flex-wrap gap-3">
@@ -315,9 +327,9 @@ const kpis = computed(() => [
           </UiButton>
         </div>
       </div>
-      <div class="relative hidden md:block" aria-hidden="true">
-        <img :src="pina" alt="" class="absolute inset-0 size-full object-cover" />
-        <img :src="paliSaludando" alt="" class="absolute bottom-0 left-4 h-40 w-auto" />
+      <div v-if="figuras" :class="['figura-saludo', figuras.id]" aria-hidden="true">
+        <img v-if="figuras.id === 'cafe'" :src="cafeEscena" alt="" class="escena" />
+        <img :src="figuras.saludo" alt="" class="personaje" />
       </div>
     </section>
 
@@ -347,7 +359,12 @@ const kpis = computed(() => [
             Total de la semana: <strong class="tabular-nums text-slate-900">{{ dinero(totalSemana) }}</strong>
           </p>
           <div class="mt-4 mb-5 flex w-full flex-1 items-end gap-2">
-            <img :src="paliSenalando" alt="Pali señalando la gráfica de ventas" class="w-[34%] max-w-[130px] object-contain" />
+            <img
+              v-if="figuras"
+              :src="figuras.senala"
+              alt=""
+              class="w-[34%] max-w-[130px] object-contain"
+            />
             <div class="flex min-w-0 flex-1 flex-col items-center">
               <div class="relative h-[150px] w-full">
                 <Line :data="datosVentas" :options="opcionesVentas" aria-label="Ventas de los últimos 7 días" />
@@ -366,8 +383,13 @@ const kpis = computed(() => [
         </article>
 
         <article class="columna">
-          <h3 class="columna-titulo text-center">Paleta del día: más vendida</h3>
-          <img :src="paliPulgar" alt="Pali con el pulgar arriba" class="my-3 max-h-[200px] w-full max-w-[300px] object-contain" />
+          <h3 class="columna-titulo text-center">Más vendido</h3>
+          <img
+            v-if="figuras"
+            :src="figuras.celebra"
+            alt=""
+            class="my-3 max-h-[200px] w-full max-w-[220px] object-contain"
+          />
           <p v-if="paletaDelDia" class="mb-5 text-center text-sm text-slate-600">
             <strong class="text-slate-900">{{ paletaDelDia.nombre }}</strong>
             · {{ plural(paletaDelDia.cantidad, 'pieza', 'piezas') }} {{ paletaDelDia.periodo }}
@@ -392,7 +414,12 @@ const kpis = computed(() => [
                 </span>
               </li>
             </ul>
-            <img :src="paliPensando" alt="Pali pensando" class="w-[28%] max-w-[110px] object-contain" />
+            <img
+              v-if="figuras"
+              :src="figuras.piensa"
+              alt=""
+              class="w-[28%] max-w-[120px] object-contain"
+            />
           </div>
           <UiButton v-if="destinoAlertas" class="mt-auto" @click="$emit('ir', destinoAlertas)">Tomar acción</UiButton>
         </article>
@@ -446,6 +473,47 @@ const kpis = computed(() => [
 .saludo-hero {
   background: var(--saludo-fondo, var(--marca-600));
   transition: background 420ms var(--ease-out);
+}
+
+.figura-saludo {
+  position: relative;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding-inline: 1rem;
+}
+
+.figura-saludo .personaje {
+  position: relative;
+  z-index: 1;
+  height: 11rem;
+  width: auto;
+}
+
+.figura-saludo.cafe {
+  padding: 0;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.figura-saludo .escena {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.figura-saludo.cafe .personaje {
+  height: 9.5rem;
+  margin: 0 0.75rem 0.4rem 0;
+}
+
+@media (min-width: 768px) {
+  .figura-saludo {
+    display: flex;
+  }
 }
 
 .columnas {

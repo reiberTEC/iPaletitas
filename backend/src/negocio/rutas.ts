@@ -54,6 +54,26 @@ async function asegurarColumnaAmbiente() {
   columnaAmbienteLista = true
 }
 
+let columnaMascotaLista = false
+
+/** El panel ya no asume paletería: la mascota se elige y, si no hay columna, no se muestra. */
+async function asegurarColumnaMascota() {
+  if (columnaMascotaLista) return
+  await query(`
+    ALTER TABLE cuentas
+      ADD COLUMN IF NOT EXISTS mascota_panel text NOT NULL DEFAULT 'ninguna'
+  `)
+  await query(`
+    ALTER TABLE cuentas DROP CONSTRAINT IF EXISTS cuentas_mascota_panel_chk
+  `)
+  await query(`
+    ALTER TABLE cuentas
+      ADD CONSTRAINT cuentas_mascota_panel_chk
+      CHECK (mascota_panel IN ('ninguna', 'pali', 'cafe'))
+  `)
+  columnaMascotaLista = true
+}
+
 function num(v: unknown) {
   const n = typeof v === 'number' ? v : Number(v)
   return Number.isFinite(n) ? n : NaN
@@ -66,6 +86,7 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
   const metodo = req.method ?? 'GET'
 
   if (metodo === 'GET' && ruta === '/api/negocio') {
+    await asegurarColumnaMascota()
     return responderSnapshot(res, sesion.cuentaId, sesion.correo)
   }
 
@@ -120,10 +141,14 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
     const iconos = str(datos.iconos, 20) === 'genericos' ? 'genericos' : 'paleta'
     const ambienteRaw = str(datos.ambiente, 20)
     const ambiente = ambienteRaw === 'tinte' || ambienteRaw === 'vivo' ? ambienteRaw : 'clasico'
+    const mascotaRaw = str(datos.mascota, 20)
+    const mascota = mascotaRaw === 'pali' || mascotaRaw === 'cafe' ? mascotaRaw : 'ninguna'
     await asegurarColumnaAmbiente()
+    await asegurarColumnaMascota()
     await query(
       `UPDATE cuentas SET
-         logo_url = $2, color_marca = $3, iconos_estilo = $4, ambiente_marca = $5, actualizado_en = now()
+         logo_url = $2, color_marca = $3, iconos_estilo = $4, ambiente_marca = $5,
+         mascota_panel = $6, actualizado_en = now()
        WHERE id = $1`,
       [
         sesion.cuentaId,
@@ -131,6 +156,7 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
         typeof datos.color === 'string' ? datos.color : null,
         iconos,
         ambiente,
+        mascota,
       ],
     )
     return responderSnapshot(res, sesion.cuentaId, sesion.correo)
@@ -138,9 +164,11 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
 
   if (metodo === 'DELETE' && ruta === '/api/negocio/marca') {
     await asegurarColumnaAmbiente()
+    await asegurarColumnaMascota()
     await query(
       `UPDATE cuentas SET
-         logo_url = null, color_marca = null, iconos_estilo = 'paleta', ambiente_marca = 'clasico', actualizado_en = now()
+         logo_url = null, color_marca = null, iconos_estilo = 'paleta', ambiente_marca = 'clasico',
+         mascota_panel = 'ninguna', actualizado_en = now()
        WHERE id = $1`,
       [sesion.cuentaId],
     )
@@ -256,11 +284,16 @@ export async function manejarNegocio(req: IncomingMessage, res: ServerResponse, 
       [id, sesion.cuentaId],
     )
     if (!u.rows[0]) return error(res, 404, 'Usuario no encontrado.')
-    const { crearTokenPassword } = await import('../auth/password.ts')
-    const { enlace } = await crearTokenPassword({ usuarioId: u.rows[0].id, proposito: 'invitar' })
-    console.log(`[auth] Enlace invitar (${u.rows[0].correo}): ${enlace}`)
-    const snap = await snapshotNegocio(sesion.cuentaId, sesion.correo)
-    return json(res, 200, { ...snap, enlaceInvitacion: enlace })
+    try {
+      const { crearTokenPassword } = await import('../auth/password.ts')
+      const { enlace } = await crearTokenPassword({ usuarioId: u.rows[0].id, proposito: 'invitar' })
+      console.log(`[auth] Enlace invitar (${u.rows[0].correo}): ${enlace}`)
+      const snap = await snapshotNegocio(sesion.cuentaId, sesion.correo)
+      return json(res, 200, { ...snap, enlaceInvitacion: enlace })
+    } catch (e) {
+      console.error(e)
+      return error(res, 500, 'No se pudo guardar el enlace de invitación.')
+    }
   }
 
   const matchReactivar = ruta.match(/^\/api\/negocio\/usuarios\/([^/]+)\/reactivar$/)

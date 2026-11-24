@@ -35,11 +35,11 @@ INSERT INTO planes (
     NULL,
     'basica',
     false,
-    2, 5, NULL, 12,
+    2, 5, 1000, 12,
     ARRAY[
       'Hasta 2 sucursales',
       'Hasta 5 usuarios',
-      'Productos ilimitados',
+      'Hasta 1,000 productos',
       'Anticipos en el punto de venta',
       'Alertas de stock bajo y por caducar',
       'Historial de ventas de 12 meses',
@@ -55,7 +55,7 @@ INSERT INTO planes (
     NULL,
     'doble',
     true,
-    5, 15, NULL, 24,
+    5, 15, 3000, 24,
     ARRAY[
       'Hasta 5 sucursales',
       'Hasta 15 usuarios',
@@ -69,17 +69,18 @@ INSERT INTO planes (
   (
     'especial-super',
     'Especial Super',
-    'Sin techos de sucursales, usuarios ni historial.',
+    'El cupo más alto, cerrado para no dejar crecer la base sin tope.',
     1199,
     '#f59e0b',
     '#93c5fd',
     'doble-especial',
     false,
-    NULL, NULL, NULL, NULL,
+    20, 60, 5000, 36,
     ARRAY[
-      'Sucursales, usuarios y productos ilimitados',
-      'Historial de ventas sin límite de meses',
-      'Todo lo de Doble Especial, sin cupos',
+      'Hasta 20 sucursales',
+      'Hasta 60 usuarios',
+      'Hasta 5,000 productos',
+      'Historial de ventas de 36 meses',
       'Misma app de mostrador: POS, inventario y caducados',
       'Soporte prioritario por correo'
     ]

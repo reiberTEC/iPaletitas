@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import Home from './components/Home.vue'
 import Login from './components/Login.vue'
 import RecuperarPassword from './components/RecuperarPassword.vue'
@@ -11,8 +11,9 @@ import PanelCliente from './components/cliente/PanelCliente.vue'
 import CuentaBloqueada from './components/cliente/CuentaBloqueada.vue'
 import PanelAdmin from './components/admin/PanelAdmin.vue'
 import TemaToggle from './components/ui/TemaToggle.vue'
-import { guardarToken, leerToken, sincronizarPagosApi } from './lib/api'
-import { aplicarSnapshot, bloqueo, cerrarSesion, estado, iniciarSesion, sincronizarDesdeApi } from './stores/negocio'
+import { ErrorApi, guardarToken, leerToken, sincronizarPagosApi } from './lib/api'
+import { esEscritorio } from './lib/plataforma'
+import { aplicarSnapshot, bloqueo, cerrarSesion, estado, iniciarSesion, pedirLogin, sincronizarDesdeApi } from './stores/negocio'
 import { cerrarSesionAdmin, esCorreoAdmin, estado as admin, iniciarSesionAdmin } from './stores/admin'
 
 type Vista =
@@ -30,8 +31,9 @@ function vistaInicial(): Vista {
   const params = new URLSearchParams(window.location.search)
   if (params.get('definir')) return 'definir'
   if (admin.sesion) return 'admin'
+  if (estado.sesion && !leerToken()) return 'login'
   if (estado.sesion) return estado.licencia ? 'cliente' : 'planes'
-  return 'home'
+  return esEscritorio ? 'login' : 'home'
 }
 
 const vistaActual = ref<Vista>(vistaInicial())
@@ -48,6 +50,8 @@ function limpiarQuery(...claves: string[]) {
 }
 
 function ir(vista: Vista) {
+  // La página de inicio es solo de la web; el programa de Windows vive en el login.
+  if (vista === 'home' && esEscritorio) vista = 'login'
   if (vista === 'admin' && !puedeVerAdmin.value) vista = 'login'
   if ((vista === 'planes' || vista === 'activacion') && !estado.sesion) vista = 'login'
   vistaActual.value = vista
@@ -100,6 +104,10 @@ function trasDefinirPassword() {
   ir('login')
 }
 
+watch(pedirLogin, () => {
+  if (pedirLogin.value) ir('login')
+})
+
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search)
   const pago = params.get('pago')
@@ -138,8 +146,8 @@ onMounted(async () => {
       limpiarQuery('portal')
     }
     ir(estado.licencia ? 'cliente' : 'planes')
-  } catch {
-    guardarToken(null)
+  } catch (e) {
+    if (e instanceof ErrorApi && (e.codigo === 401 || e.codigo === 403)) guardarToken(null)
   } finally {
     cargandoSesion.value = false
   }
@@ -203,6 +211,14 @@ onMounted(async () => {
     <CuentaBloqueada v-if="bloqueo" :motivo="bloqueo" @salir="salirCliente" @contratar="ir('planes')" />
     <PanelCliente v-else @salir="salirCliente" />
   </template>
+
+  <Login
+    v-else-if="esEscritorio"
+    @irRegistro="ir('registro')"
+    @irHome="ir('login')"
+    @irRecuperar="ir('recuperar')"
+    @ingresar="ingresar"
+  />
 
   <Home v-else @irLogin="ir('login')" @irRegistro="ir('registro')" />
 

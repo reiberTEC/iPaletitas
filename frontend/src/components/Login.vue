@@ -15,6 +15,8 @@ const togglePassword = () => {
   showPassword.value = !showPassword.value
 }
 
+const esperaEnlace = sessionStorage.getItem('ipaletitas:invitar-al-entrar')
+
 const emit = defineEmits<{
   irRegistro: []
   irHome: []
@@ -50,7 +52,13 @@ const handleLogin = async () => {
     <main class="right-panel">
       <div class="form-wrapper">
         <h1 class="title">Entra a tu cuenta</h1>
-        <p class="subtitle">Tus productos, tus ventas y tus sucursales, donde los dejaste.</p>
+        <p class="subtitle">
+          {{
+            esperaEnlace
+              ? 'Entra de nuevo para guardar al cajero y generar su enlace.'
+              : 'Tus productos, tus ventas y tus sucursales, donde los dejaste.'
+          }}
+        </p>
 
         <form class="login-form" @submit.prevent="handleLogin">
           <div class="input-group">

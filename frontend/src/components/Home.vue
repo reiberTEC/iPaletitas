@@ -1927,58 +1927,34 @@ function subir() {
 }
 
 .planes-cabeza {
-  max-width: 40rem;
+  max-width: 38rem;
 }
 
 .planes-frase {
-  margin-top: 1.25rem;
-  color: var(--tinta-2);
+  margin-top: 1rem;
+  max-width: 62ch;
+  color: var(--tinta);
   font-size: 1.125rem;
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 .planes-lineas {
   display: grid;
-  gap: 0.5rem;
-  margin-top: 2rem;
+  gap: 1.25rem;
+  margin-top: 3.25rem;
+  align-items: stretch;
 }
 
-@media (min-width: 640px) {
+@media (min-width: 720px) {
   .planes-lineas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: end;
   }
 }
 
-@media (min-width: 1280px) {
-  .planes {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    column-gap: 0.5rem;
-  }
-
-  /* El título ocupa el hueco sobre las dos líneas más bajas */
-  .planes-cabeza {
-    position: relative;
-    z-index: 1;
-    grid-column: 1 / 3;
-    grid-row: 1;
-    align-self: start;
-    padding-right: 2rem;
-  }
-
-  /* Comparte fila con el título: su hueco superior no debe tragarse los clics del selector */
+@media (min-width: 1180px) {
   .planes-lineas {
-    grid-column: 1 / -1;
-    grid-row: 1;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    margin-top: 0;
-    padding-top: 16rem;
-    pointer-events: none;
-  }
-
-  .planes-lineas > * {
-    pointer-events: auto;
+    gap: 1rem;
   }
 }
 

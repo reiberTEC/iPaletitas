@@ -1,4 +1,4 @@
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   DIAS_GARANTIA,
   PLANES,
@@ -27,6 +27,7 @@ import {
   eliminarUsuarioApi,
   guardarMarcaApi,
   reactivarUsuarioApi,
+  ErrorApi,
   leerToken,
   obtenerNegocioApi,
   quitarMarcaApi,
@@ -202,6 +203,12 @@ export interface Facturacion {
 
 /** Estilo de iconos del catálogo / punto de venta. */
 export type IconosMarca = 'paleta' | 'genericos'
+/** Pali es la paleta de iPaletitas. El panel de un negocio que no vende paletas no la muestra. */
+export type MascotaMarca = 'ninguna' | 'pali' | 'cafe'
+
+export function normalizarMascota(valor: unknown): MascotaMarca {
+  return valor === 'pali' || valor === 'cafe' ? valor : 'ninguna'
+}
 export type { AmbienteMarca } from '@/lib/marca'
 
 /** Identidad del negocio dentro del panel: logo, color, iconos y ambiente. */
@@ -212,6 +219,8 @@ export interface Marca {
   iconos: IconosMarca
   /** Cómo se tiñe el panel al aplicar el color de marca. */
   ambiente: import('@/lib/marca').AmbienteMarca
+  /** Personaje del inicio. `ninguna` deja el panel en el negocio. */
+  mascota: MascotaMarca
 }
 
 interface Estado {
@@ -297,7 +306,7 @@ function estadoVacio(): Estado {
     licencia: null,
     pruebaUsada: false,
     tutorialPendiente: false,
-    marca: { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' },
+    marca: { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico', mascota: 'ninguna' },
     planElegido: null,
     sucursalActivaId: '',
     sucursales: [],
@@ -335,9 +344,10 @@ const otrosNegocios = reactive<Record<string, DatosNegocio>>(cargarOtrosNegocios
 // Cuentas guardadas antes de caducados / pérdidas.
 estado.perdidas ??= []
 estado.folioPerdida ??= 1
-estado.marca ??= { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' }
+estado.marca ??= { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico', mascota: 'ninguna' }
 estado.marca.iconos ??= 'paleta'
 estado.marca.ambiente ??= 'clasico'
+estado.marca.mascota ??= 'ninguna'
 
 // Usuarios guardados antes de que existieran puesto, teléfono, fecha de ingreso y permisos.
 for (const usuario of estado.usuarios as Partial<Usuario>[]) {
@@ -400,6 +410,7 @@ export function aplicarSnapshot(snap: SnapshotNegocio) {
         (s.marca as Marca | undefined)?.ambiente === 'tinte' || (s.marca as Marca | undefined)?.ambiente === 'vivo'
           ? (s.marca as Marca).ambiente
           : 'clasico',
+      mascota: normalizarMascota((s.marca as Marca | undefined)?.mascota),
     },
     planElegido: s.planElegido ?? null,
     sucursales: s.sucursales ?? [],
@@ -416,10 +427,78 @@ export function aplicarSnapshot(snap: SnapshotNegocio) {
   })
 }
 
+const CLAVE_INVITAR = 'ipaletitas:invitar-al-entrar'
+
+/** El panel abre Usuarios y muestra este enlace en cuanto vuelve a montarse. */
+export const avisoEnlace = ref('')
+
+/** App.vue lo observa para llevar al login sin borrar el negocio local. */
+export const pedirLogin = ref(0)
+
+function datosDeUsuario(usuario: Usuario): DatosUsuario {
+  const { id: _id, ...datos } = usuario
+  return datos
+}
+
+export function solicitarLoginParaInvitar(usuario: Usuario) {
+  sessionStorage.setItem(CLAVE_INVITAR, JSON.stringify(datosDeUsuario(usuario)))
+  pedirLogin.value += 1
+}
+
+function invitacionPendiente(): DatosUsuario | null {
+  try {
+    const raw = sessionStorage.getItem(CLAVE_INVITAR)
+    return raw ? (JSON.parse(raw) as DatosUsuario) : null
+  } catch {
+    return null
+  }
+}
+
 export async function sincronizarDesdeApi() {
   if (!usaApi()) return false
+  const locales = estado.usuarios.filter((u) => u.activo && !esTitular(u))
   const snap = await obtenerNegocioApi()
-  aplicarSnapshot(snap)
+  const enServidor = (snap.usuarios as Usuario[] | undefined) ?? []
+  const faltantes = locales.filter((local) => !enServidor.some((u) => mismoCorreo(u.correo, local.correo)))
+  const pendiente = invitacionPendiente()
+  let ultimo: SnapshotNegocio = snap
+  const fallidos: Usuario[] = []
+
+  for (const local of faltantes) {
+    try {
+      const creado = (await crearUsuarioApi(datosDeUsuario(local))) as SnapshotNegocio & {
+        enlaceInvitacion?: string
+      }
+      ultimo = creado
+      if (pendiente && mismoCorreo(pendiente.correo, local.correo) && creado.enlaceInvitacion) {
+        avisoEnlace.value = creado.enlaceInvitacion
+      }
+    } catch (e) {
+      console.error(e)
+      fallidos.push(local)
+    }
+  }
+
+  aplicarSnapshot(ultimo)
+  for (const local of fallidos) {
+    if (!estado.usuarios.some((u) => mismoCorreo(u.correo, local.correo))) estado.usuarios.push(local)
+  }
+
+  if (avisoEnlace.value) {
+    sessionStorage.removeItem(CLAVE_INVITAR)
+    return true
+  }
+  if (pendiente) {
+    const ya = estado.usuarios.find((u) => u.activo && mismoCorreo(u.correo, pendiente.correo))
+    const seGuardo = ya && !fallidos.some((u) => mismoCorreo(u.correo, pendiente.correo))
+    if (ya && seGuardo) {
+      const enlace = await invitarUsuario(ya.id)
+      if (enlace) {
+        avisoEnlace.value = enlace
+        sessionStorage.removeItem(CLAVE_INVITAR)
+      }
+    }
+  }
   return true
 }
 
@@ -440,7 +519,7 @@ export async function quitarMarca() {
     aplicarSnapshot(await quitarMarcaApi())
     return
   }
-  estado.marca = { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico' }
+  estado.marca = { logo: null, color: null, iconos: 'paleta', ambiente: 'clasico', mascota: 'ninguna' }
 }
 
 export const planActual = computed(() => PLANES.find((p) => p.id === estado.licencia?.planId) ?? null)
@@ -1034,9 +1113,17 @@ export async function crearUsuario(datos: DatosUsuario) {
 
 export async function invitarUsuario(id: string) {
   if (!usaApi()) return undefined
-  const snap = await invitarUsuarioApi(id)
-  aplicarSnapshot(snap)
-  return snap.enlaceInvitacion
+  try {
+    const snap = await invitarUsuarioApi(id)
+    aplicarSnapshot(snap)
+    return snap.enlaceInvitacion
+  } catch (e) {
+    if (!(e instanceof ErrorApi) || e.codigo !== 404) throw e
+    const local = estado.usuarios.find((u) => u.id === id)
+    if (!local || esTitular(local)) throw e
+    const creado = await crearUsuario(datosDeUsuario(local))
+    return creado.enlaceInvitacion
+  }
 }
 
 export async function actualizarUsuario(id: string, datos: DatosUsuario) {

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowLeft, ArrowRight, Banknote, X } from '@lucide/vue'
 import UiButton from '../ui/Button.vue'
 import type { PasoTutorial } from './tutorial'
+import { estado } from '@/stores/negocio'
 
 const props = defineProps<{ pasos: PasoTutorial[] }>()
 const emit = defineEmits<{ cambio: [paso: PasoTutorial]; cerrar: []; vender: [] }>()
@@ -180,7 +181,7 @@ onBeforeUnmount(() => {
           <X class="size-4" />
         </button>
 
-        <img v-if="paso.mascota" :src="paso.mascota" alt="" class="tutorial-mascota" />
+        <img v-if="paso.mascota && estado.marca.mascota === 'pali'" :src="paso.mascota" alt="" class="tutorial-mascota" />
         <p class="m-0 text-xs font-semibold text-slate-500 tabular-nums">Paso {{ indice + 1 }} de {{ pasos.length }}</p>
         <h2 id="tutorial-titulo" class="font-display mt-1 mb-0 pr-8 text-xl leading-tight font-bold text-balance">
           {{ paso.titulo }}

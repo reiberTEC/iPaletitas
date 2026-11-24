@@ -95,11 +95,11 @@ export const PLANES: Plan[] = [
     precioMensual: 399,
     acento: '#3b82f6',
     incluyeDe: 'Básica',
-    limites: { sucursales: 2, usuarios: 5, productos: Infinity, historialMeses: 12 },
+    limites: { sucursales: 2, usuarios: 5, productos: 1000, historialMeses: 12 },
     incluye: [
       'Hasta 2 sucursales',
       'Hasta 5 usuarios',
-      'Productos ilimitados',
+      'Hasta 1,000 productos',
       'Anticipos en el punto de venta',
       'Alertas de stock bajo y por caducar',
       'Historial de ventas de 12 meses',
@@ -114,7 +114,7 @@ export const PLANES: Plan[] = [
     acento: '#7c3aed',
     incluyeDe: 'Doble',
     destacado: true,
-    limites: { sucursales: 5, usuarios: 15, productos: Infinity, historialMeses: 24 },
+    limites: { sucursales: 5, usuarios: 15, productos: 3000, historialMeses: 24 },
     incluye: [
       'Hasta 5 sucursales',
       'Hasta 15 usuarios',
@@ -128,21 +128,22 @@ export const PLANES: Plan[] = [
   {
     id: 'especial-super',
     nombre: 'Especial Super',
-    lema: 'Sin techos de sucursales, usuarios ni historial.',
+    lema: 'El cupo más alto, cerrado para no dejar crecer la base sin tope.',
     precioMensual: 1199,
     acento: '#f59e0b',
     acentoOscuro: '#93c5fd',
     incluyeDe: 'Doble Especial',
     limites: {
-      sucursales: Infinity,
-      usuarios: Infinity,
-      productos: Infinity,
-      historialMeses: Infinity,
+      sucursales: 20,
+      usuarios: 60,
+      productos: 5000,
+      historialMeses: 36,
     },
     incluye: [
-      'Sucursales, usuarios y productos ilimitados',
-      'Historial de ventas sin límite de meses',
-      'Todo lo de Doble Especial, sin cupos',
+      'Hasta 20 sucursales',
+      'Hasta 60 usuarios',
+      'Hasta 5,000 productos',
+      'Historial de ventas de 36 meses',
       'Misma app de mostrador: POS, inventario y caducados',
       'Soporte prioritario por correo',
     ],
@@ -174,6 +175,59 @@ export function acentoPlan(plan: Plan, oscuro: boolean) {
 
 export function precioPlan(plan: Plan, ciclo: CicloPago) {
   return ciclo === 'anual' ? plan.precioMensual * 10 : plan.precioMensual
+}
+
+const CLAVE_TOPES = 'ipaletitas:topes-planes'
+
+function cupo(valor: number, uno: string, varios: string) {
+  return `Hasta ${valor.toLocaleString('es-MX')} ${valor === 1 ? uno : varios}`
+}
+
+/** Reescribe las viñetas de cupo para que la tarjeta coincida con los números. */
+export function aplicarTopes(
+  plan: Plan,
+  limites: Plan['limites'],
+) {
+  plan.limites = { ...limites }
+  const lineas = [
+    cupo(limites.sucursales, 'sucursal', 'sucursales'),
+    cupo(limites.usuarios, 'usuario', 'usuarios'),
+    cupo(limites.productos, 'producto', 'productos'),
+    `Historial de ventas de ${limites.historialMeses.toLocaleString('es-MX')} meses`,
+  ]
+  const resto = plan.incluye.filter(
+    (item) => !/sucursal|usuario|producto|historial|ilimitad|sin límite|sin cupo/i.test(item),
+  )
+  plan.incluye = [...lineas, ...resto]
+}
+
+export function guardarTopesPlan(id: PlanId, limites: Plan['limites']) {
+  const plan = PLANES.find((p) => p.id === id)
+  if (!plan) return
+  aplicarTopes(plan, limites)
+  const guardados = leerTopes()
+  guardados[id] = limites
+  localStorage.setItem(CLAVE_TOPES, JSON.stringify(guardados))
+}
+
+function leerTopes(): Partial<Record<PlanId, Plan['limites']>> {
+  try {
+    return JSON.parse(localStorage.getItem(CLAVE_TOPES) ?? '{}')
+  } catch {
+    return {}
+  }
+}
+
+for (const plan of PLANES) {
+  const guardado = leerTopes()[plan.id]
+  if (
+    guardado &&
+    [guardado.sucursales, guardado.usuarios, guardado.productos, guardado.historialMeses].every(
+      (n) => Number.isFinite(n) && n >= 0,
+    )
+  ) {
+    aplicarTopes(plan, guardado)
+  }
 }
 
 export function generarClave() {

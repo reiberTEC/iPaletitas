@@ -7,7 +7,16 @@ import UiButton from '../ui/Button.vue'
 import UiCard from '../ui/Card.vue'
 import Encabezado from '../ui/Encabezado.vue'
 import { ErrorApi } from '@/lib/api'
-import { estado, guardarMarca, quitarMarca, type IconosMarca } from '@/stores/negocio'
+import {
+  estado,
+  guardarMarca,
+  normalizarMascota,
+  quitarMarca,
+  type IconosMarca,
+  type MascotaMarca,
+} from '@/stores/negocio'
+import paliSaludando from '@/assets/Img/pali-saludando.webp'
+import tazaSaludo from '@/assets/Img/taza-saludo.png'
 import {
   AMBIENTES,
   COLOR_IPALETITAS,
@@ -29,6 +38,27 @@ const logo = ref<string | null>(estado.marca.logo)
 const color = ref<string>(estado.marca.color ?? COLOR_IPALETITAS)
 const iconos = ref<IconosMarca>(estado.marca.iconos ?? 'paleta')
 const ambiente = ref<AmbienteMarca>(normalizarAmbiente(estado.marca.ambiente))
+const mascota = ref<MascotaMarca>(normalizarMascota(estado.marca.mascota))
+
+const mascotas: { id: MascotaMarca; titulo: string; texto: string; imagen?: string }[] = [
+  {
+    id: 'ninguna',
+    titulo: 'Sin mascota',
+    texto: 'El inicio habla de tu negocio. Sin paleta ni foto de nevería.',
+  },
+  {
+    id: 'pali',
+    titulo: 'Pali',
+    texto: 'La paleta de iPaletitas. Para paleterías y neverías.',
+    imagen: paliSaludando,
+  },
+  {
+    id: 'cafe',
+    titulo: 'Taza',
+    texto: 'Una taza de café, hermana de Pali. Para cafeterías.',
+    imagen: tazaSaludo,
+  },
+]
 const sugeridos = ref<string[]>([])
 const leyendo = ref(false)
 const error = ref('')
@@ -41,14 +71,16 @@ const cambios = computed(
     logo.value !== estado.marca.logo ||
     color.value !== (estado.marca.color ?? COLOR_IPALETITAS) ||
     iconos.value !== (estado.marca.iconos ?? 'paleta') ||
-    ambiente.value !== normalizarAmbiente(estado.marca.ambiente),
+    ambiente.value !== normalizarAmbiente(estado.marca.ambiente) ||
+    mascota.value !== normalizarMascota(estado.marca.mascota),
 )
 const esPredeterminada = computed(
   () =>
     !estado.marca.logo &&
     !estado.marca.color &&
     (estado.marca.iconos ?? 'paleta') === 'paleta' &&
-    normalizarAmbiente(estado.marca.ambiente) === 'clasico',
+    normalizarAmbiente(estado.marca.ambiente) === 'clasico' &&
+    (estado.marca.mascota ?? 'ninguna') === 'ninguna',
 )
 const legibilidad = computed(() => contraste(rampa.value[600], '#ffffff'))
 
@@ -119,6 +151,7 @@ async function guardar() {
       color: color.value === COLOR_IPALETITAS ? null : color.value,
       iconos: iconos.value,
       ambiente: ambiente.value,
+      mascota: mascota.value,
     })
     guardado.value = true
     setTimeout(() => (guardado.value = false), 2200)
@@ -138,6 +171,7 @@ async function restablecer() {
     color.value = COLOR_IPALETITAS
     iconos.value = 'paleta'
     ambiente.value = 'clasico'
+    mascota.value = 'ninguna'
     sugeridos.value = []
   } catch (e) {
     error.value =
@@ -163,10 +197,7 @@ async function restablecer() {
         <h2 class="font-display text-lg font-semibold">Tu logo</h2>
 
         <label
-          :class="[
-            'zona mt-4 flex cursor-pointer items-center gap-5 rounded-xl border-2 border-dashed p-5',
-            arrastrando ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-blue-300',
-          ]"
+          :class="['zona mt-4 flex cursor-pointer items-center gap-5 rounded-md p-5', { arrastrando }]"
           @dragover.prevent="arrastrando = true"
           @dragleave="arrastrando = false"
           @drop.prevent="alSoltar"
@@ -216,7 +247,7 @@ async function restablecer() {
             role="radio"
             :aria-checked="color === opcion"
             :aria-label="`Usar ${opcion}`"
-            class="muestra ip-boton grid size-12 cursor-pointer place-items-center rounded-xl border-0"
+            class="muestra ip-boton grid size-12 cursor-pointer place-items-center rounded-md border-0"
             :style="{ backgroundColor: opcion }"
             @click="color = opcion"
           >
@@ -226,10 +257,10 @@ async function restablecer() {
               :style="{ color: contraste(opcion, '#ffffff') >= 3 ? '#ffffff' : '#0f172a' }"
             />
           </button>
-          <label class="flex h-12 cursor-pointer items-center gap-2 rounded-xl px-3 ring-1 ring-slate-200 ring-inset hover:ring-blue-300">
+          <label class="otro-color flex h-12 cursor-pointer items-center gap-2 rounded-md px-3">
             <input v-model="color" type="color" class="selector size-7 cursor-pointer" aria-label="Elegir otro color" />
-            <span class="text-sm font-semibold text-slate-700">Otro color</span>
-            <span class="font-mono text-sm text-slate-500">{{ color.toUpperCase() }}</span>
+            <span class="text-sm font-semibold text-slate-800">Otro color</span>
+            <span class="text-sm font-semibold text-slate-800 tabular-nums">{{ color.toUpperCase() }}</span>
           </label>
         </div>
 
@@ -256,16 +287,12 @@ async function restablecer() {
             type="button"
             role="radio"
             :aria-checked="ambiente === opcion.id"
-            :class="[
-              'flex flex-col gap-3 rounded-xl p-4 text-left ring-1 transition',
-              ambiente === opcion.id
-                ? 'bg-blue-50 ring-2 ring-blue-600 ring-inset'
-                : 'bg-white ring-slate-200 hover:ring-blue-300',
-            ]"
+            :class="['opcion', { activa: ambiente === opcion.id }]"
+            :style="{ '--acento': color }"
             @click="ambiente = opcion.id"
           >
             <span
-              class="ambiente-muestra block h-14 overflow-hidden rounded-lg ring-1 ring-slate-200/80 ring-inset"
+              class="ambiente-muestra"
               :data-ambiente-preview="opcion.id"
               :style="{ '--preview': color }"
               aria-hidden="true"
@@ -275,10 +302,10 @@ async function restablecer() {
                 <span class="ambiente-muestra-barra" />
               </span>
             </span>
-            <div>
-              <p class="font-semibold text-slate-900">{{ opcion.titulo }}</p>
-              <p class="mt-1 text-sm leading-5 text-slate-500">{{ opcion.texto }}</p>
-            </div>
+            <span class="opcion-cuerpo">
+              <p class="opcion-titulo">{{ opcion.titulo }}</p>
+              <p class="opcion-nota">{{ opcion.texto }}</p>
+            </span>
           </button>
         </div>
 
@@ -293,37 +320,52 @@ async function restablecer() {
             type="button"
             role="radio"
             :aria-checked="iconos === opcion.id"
-            :class="[
-              'flex flex-col gap-3 rounded-xl p-4 text-left ring-1 transition',
-              iconos === opcion.id
-                ? 'bg-blue-50 ring-2 ring-blue-600 ring-inset'
-                : 'bg-white ring-slate-200 hover:ring-blue-300',
-            ]"
+            :class="['opcion', { activa: iconos === opcion.id }]"
+            :style="{ '--acento': color }"
             @click="iconos = opcion.id"
           >
-            <div class="flex items-center gap-2">
-              <IconoProducto
-                :forzar="opcion.id === 'paleta' ? 'paleta' : 'comida'"
-                :size="28"
-              />
-              <IconoProducto
-                :forzar="opcion.id === 'paleta' ? 'paleta-verde' : 'bebida'"
-                :size="28"
-              />
-              <IconoProducto
-                :forzar="opcion.id === 'paleta' ? 'paleta-oro' : 'caja'"
-                :size="28"
-              />
-            </div>
-            <div>
-              <p class="font-semibold text-slate-900">{{ opcion.titulo }}</p>
-              <p class="mt-1 text-sm leading-5 text-slate-500">{{ opcion.texto }}</p>
-            </div>
+            <span class="opcion-iconos">
+              <IconoProducto :forzar="opcion.id === 'paleta' ? 'paleta' : 'comida'" :size="28" />
+              <IconoProducto :forzar="opcion.id === 'paleta' ? 'paleta-verde' : 'bebida'" :size="28" />
+              <IconoProducto :forzar="opcion.id === 'paleta' ? 'paleta-oro' : 'caja'" :size="28" />
+            </span>
+            <span class="opcion-cuerpo">
+              <p class="opcion-titulo">{{ opcion.titulo }}</p>
+              <p class="opcion-nota">{{ opcion.texto }}</p>
+            </span>
           </button>
         </div>
 
-        <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-6">
-          <UiButton :disabled="!cambios || leyendo" @click="guardar">Aplicar a mi panel</UiButton>
+        <h2 class="mt-10 font-display text-lg font-semibold">Mascota del inicio</h2>
+        <p class="mt-1 text-sm text-slate-700">
+          El saludo de Inicio puede ir solo, con Pali o con Taza.
+        </p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-3" role="radiogroup" aria-label="Mascota del inicio">
+          <button
+            v-for="opcion in mascotas"
+            :key="opcion.id"
+            type="button"
+            role="radio"
+            :aria-checked="mascota === opcion.id"
+            :class="['opcion', { activa: mascota === opcion.id }]"
+            :style="{ '--acento': color }"
+            @click="mascota = opcion.id"
+          >
+            <img
+              v-if="opcion.imagen"
+              :src="opcion.imagen"
+              alt=""
+              class="mascota-muestra"
+            />
+            <span class="opcion-cuerpo">
+              <p class="opcion-titulo">{{ opcion.titulo }}</p>
+              <p class="opcion-nota">{{ opcion.texto }}</p>
+            </span>
+          </button>
+        </div>
+
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <UiButton class="aplicar" :disabled="!cambios || leyendo" @click="guardar">Aplicar a mi panel</UiButton>
           <span v-if="guardado" class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700" role="status">
             <Check class="size-4" />
             Listo, tu panel ya tiene tu marca
@@ -337,7 +379,7 @@ async function restablecer() {
 
       <section aria-label="Vista previa" class="vista" :style="estiloVista" :data-ambiente-preview="ambiente">
         <p class="mb-3 text-sm font-semibold text-slate-500">Así se verá tu panel</p>
-        <div class="vista-marco overflow-hidden rounded-2xl border border-slate-200">
+        <div class="vista-marco overflow-hidden rounded-md">
           <div class="vista-riel flex items-center gap-3 border-b p-4">
             <span class="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-blue-600 text-sm font-bold text-white">
               <img
@@ -410,9 +452,108 @@ async function restablecer() {
 
 <style scoped>
 .zona {
+  background: #f1f5f9;
+  transition: background-color 160ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.zona:active {
+  transform: scale(0.99);
+}
+
+.zona.arrastrando {
+  background: color-mix(in oklab, var(--marca-600) 16%, #f1f5f9);
+}
+
+.otro-color {
+  background: #f1f5f9;
+}
+
+.opcion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+  padding: 0 0 1rem;
+  border: 0;
+  border-radius: 6px;
+  background: #fff;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: inset 0 0.4rem 0 var(--acento, var(--marca-600));
   transition:
-    border-color 150ms ease,
-    background-color 150ms ease;
+    background-color 160ms ease,
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.opcion:active {
+  transform: scale(0.97);
+}
+
+.opcion:focus-visible {
+  outline: 3px solid var(--acento, var(--marca-600));
+  outline-offset: 2px;
+}
+
+.opcion-cuerpo,
+.opcion-iconos {
+  padding-inline: 1rem;
+}
+
+.opcion-iconos {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.mascota-muestra {
+  width: auto;
+  max-width: calc(100% - 2rem);
+  height: 5.5rem;
+  margin: 1rem 1rem 0;
+  object-fit: contain;
+  object-position: left bottom;
+}
+
+.opcion-titulo {
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.opcion-nota {
+  margin-top: 0.35rem;
+  color: #334155;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.opcion.activa {
+  background: color-mix(in oklab, var(--acento, var(--marca-600)) 74%, #000);
+  color: #fff;
+  box-shadow: inset 0 0.4rem 0 color-mix(in oklab, #000 28%, var(--acento, var(--marca-600)));
+}
+
+.opcion.activa .opcion-nota {
+  color: #fff;
+}
+
+:deep(.aplicar) {
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), background-color 140ms ease;
+}
+
+:deep(.aplicar:active:not(:disabled)) {
+  transform: scale(0.97);
+}
+
+.muestra {
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.muestra:active {
+  transform: scale(0.97);
 }
 
 .muestra[aria-checked='true'] {
@@ -495,6 +636,10 @@ async function restablecer() {
 .ambiente-muestra {
   display: grid;
   grid-template-columns: 28% 1fr;
+  height: 3.5rem;
+  margin: 1rem 1rem 0;
+  overflow: hidden;
+  border-radius: 6px;
   background: #f8fafc;
 }
 
@@ -537,9 +682,43 @@ async function restablecer() {
   border-color: color-mix(in oklab, var(--preview, var(--marca-600)) 30%, #e2e8f0);
 }
 
+html.oscuro .zona,
+html.oscuro .otro-color,
+html.oscuro .opcion:not(.activa) {
+  background: #1c2636;
+  color: #f8fafc;
+}
+
+html.oscuro .opcion:not(.activa) .opcion-nota {
+  color: #e2e8f0;
+}
+
 html.oscuro .muestra[aria-checked='true'] {
   box-shadow:
     0 0 0 2px #131a26,
     0 0 0 4px #e2e8f0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .opcion:not(.activa):hover {
+    background: color-mix(in oklab, var(--acento, var(--marca-600)) 8%, #fff);
+  }
+
+  html.oscuro .opcion:not(.activa):hover {
+    background: color-mix(in oklab, var(--acento, var(--marca-600)) 16%, #1c2636);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zona,
+  .zona:active,
+  .opcion,
+  .opcion:active,
+  .muestra,
+  .muestra:active,
+  .aplicar:active {
+    transition: background-color 160ms ease;
+    transform: none;
+  }
 }
 </style>
